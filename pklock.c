@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <pwd.h>
 
 #define MAXLOCK 512
 #define MAXNAME 128
@@ -53,11 +54,27 @@ char *dolock(char *fname)
 		return "LOCK ERROR: cannot access lock file";
 	}
 	if ((n = read(fd, locker, MAXNAME)) < 1) {
-		lseek(fd, 0, SEEK_SET);
-/*		strcpy(locker, getlogin()); */
-		cuserid(locker);
+		/* Generate the owner tag (user@host) for the lock file */
+		const char *user = getlogin();
+		if (!user) {
+			/* No controlling terminal; Try using the passwd entry */
+			struct passwd *pw = getpwuid(geteuid());
+			if (pw)
+				user = pw->pw_name;
+		}
+
+		if (!user) {
+			/* Still no username; fall back to numeric UID */
+			snprintf(locker, sizeof(locker), "uid%d", (int)geteuid());
+
+		} else {
+			snprintf(locker, sizeof(locker), "%s", user);
+		}
 		strcat(locker + strlen(locker), "@");
 		gethostname(locker + strlen(locker), 64);
+
+		/* Write the owner tag to the lock file */
+		lseek(fd, 0, SEEK_SET);
 		write(fd, locker, strlen(locker));
 		close(fd);
 		return NULL;
