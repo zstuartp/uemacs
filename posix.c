@@ -23,6 +23,14 @@
 #include "efunc.h"
 #include "utf8.h"
 
+#ifndef OLCUC
+#define OLCUC 0		/* OLCUC is not defined on macOS	*/
+#endif
+
+#ifndef XCASE
+#define XCASE 0		/* XCASE is not define on macOS		*/
+#endif
+
 static int kbdflgs;				/* saved keyboard fd flags      */
 static int kbdpoll;				/* in O_NDELAY mode             */
 
