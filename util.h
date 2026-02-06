@@ -5,6 +5,7 @@
 
 /* Compiler flag suppression macros */
 #define UNUSED_OK(x) (void)x
+#define IGNORED_RETURN_OK(x) if (x) { ; }
 #define FALLTHROUGH_OK() __attribute__((fallthrough))
 
 /* Safe zeroing, no complaining about overlap */
