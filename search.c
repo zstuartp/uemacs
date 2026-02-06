@@ -63,6 +63,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 /*
  * The variables magical and rmagical determine if there
@@ -850,14 +851,14 @@ static int replaces(int kind, int f, int n)
 				curwp->w_dotp = origline;
 				curwp->w_doto = origoff;
 				curwp->w_flag |= WFMOVE;
-
+				FALLTHROUGH_OK();
 			case BELL:		/* abort! and stay */
 				mlwrite("Aborted!");
 				return FALSE;
 
 			default:		/* bitch and beep */
 				TTbeep();
-
+				FALLTHROUGH_OK();
 			case '?':		/* help me */
 				mlwrite
 				    ("(Y)es, (N)o, (!)Do rest, (U)ndo last, (^G)Abort, (.)Abort back, (?)Help: ");
@@ -1108,6 +1109,7 @@ static int mcstr(void)
 				pchr = *++patptr;
 				magical = TRUE;
 			}
+			FALLTHROUGH_OK();
 		default:
  litcase:		mcptr->mc_type = LITCHAR;
 			mcptr->u.lchar = pchr;
@@ -1381,6 +1383,7 @@ static int cclmake(char **ppatptr, struct magic *mcptr)
 			 */
 		case MC_ESC:
 			pchr = *++patptr;
+			FALLTHROUGH_OK();
 		default:
 			setbit(pchr, bmap);
 			break;

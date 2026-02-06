@@ -2,7 +2,10 @@
 #define UTIL_H_
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+/* Compiler flag suppression macros */
 #define UNUSED_OK(x) (void)x
+#define FALLTHROUGH_OK() __attribute__((fallthrough))
 
 /* Safe zeroing, no complaining about overlap */
 static inline void mystrscpy(char *dst, const char *src, int size)

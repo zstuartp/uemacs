@@ -565,6 +565,7 @@ int svar(struct variable_description *var, char *value)
 			break;
 		case EVLINE:
 			putctext(value);
+			FALLTHROUGH_OK();
 		case EVGFLAGS:
 			gflags = atoi(value);
 			break;

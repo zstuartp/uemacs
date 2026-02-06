@@ -625,7 +625,7 @@ int dobuf(struct buffer *bp)
 						goto onward;
 				}
 				/* drop down and act just like !BREAK */
-
+				FALLTHROUGH_OK();
 			case DBREAK:		/* BREAK directive */
 				if (dirnum == DBREAK && execlevel)
 					goto onward;
