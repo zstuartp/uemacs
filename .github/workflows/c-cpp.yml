@@ -3,22 +3,75 @@ name: C/C++ CI
 on:
   push:
     branches: [ "master", "testing" ]
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-linux:
+    name: Linux
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies (hunspell, ncurses)
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libhunspell-dev \
             libncurses-dev \
             pkg-config
-
-      - name: make
+      - name: Build
         run: make
 
+  build-macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install hunspell ncurses pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix ncurses)/lib/pkgconfig:$(brew --prefix hunspell)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+          echo "CPPFLAGS=-I$(brew --prefix ncurses)/include -I$(brew --prefix hunspell)/include $CPPFLAGS" >> "$GITHUB_ENV"
+          echo "LDFLAGS=-L$(brew --prefix ncurses)/lib -L$(brew --prefix hunspell)/lib $LDFLAGS" >> "$GITHUB_ENV"
+      - name: Build
+        run: make
+
+  build-freebsd:
+    name: FreeBSD (VM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          release: "15.0"
+          prepare: |
+            pkg update -f
+            pkg install -y gmake pkgconf hunspell ncurses
+          run: |
+            gmake || make
+
+  build-windows-msys2:
+    name: Windows (MSYS2 UCRT64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-hunspell
+            mingw-w64-ucrt-x86_64-ncurses
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make
