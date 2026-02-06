@@ -30,7 +30,13 @@ OBJS := $(addprefix $(OBJ_DIR)/,$(SRCS:.c=.o))
 DEPS := $(OBJS:.o=.d)
 
 # ---------- Build flags ----------
+UNAME_S   ?= $(shell uname -s)
+
+# Keep strict POSIX headers, but on FreeBSD this hides BSD extensions like SIGWINCH.
 CPPFLAGS += -Iinclude -D_POSIX_C_SOURCE=200809L
+ifeq ($(UNAME_S),FreeBSD)
+  CPPFLAGS += -D__BSD_VISIBLE=1
+endif
 CFLAGS   += -std=c99 -Wall -Wextra -Werror -pedantic
 
 DEBUG ?= 0
@@ -110,5 +116,4 @@ print-vars:
 	@echo "PKG_CFLAGS=$(PKG_CFLAGS)"
 	@echo "PKG_LIBS=$(PKG_LIBS)"
 	@echo "HOMEBREW_PREFIX=$(HOMEBREW_PREFIX)"
-	:w
 
