@@ -58,28 +58,26 @@ jobs:
             set -eux
             gmake
 
-  build-windows-msys2:
-    name: Windows (MSYS2 POSIX)
+  build-windows-cygwin:
+    name: Windows (Cygwin POSIX)
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          # MSYS provides POSIX headers like <sys/ioctl.h>
-          msystem: MSYS
-          update: true
-          install: >-
-            gcc
-            make
-            pkgconf
-            hunspell
-            ncurses
+      - run: git config --global core.autocrlf input
 
       - uses: actions/checkout@v4
 
+      - name: Install Cygwin + deps
+        id: cygwin
+        uses: cygwin/cygwin-install-action@v6
+        with:
+          packages: |
+            gcc-core
+            gcc-g++
+            make
+            pkg-config
+            libhunspell-devel
+            libncurses-devel
+
       - name: Build
         run: |
-          set -eux
-          make
+          & "${{ steps.cygwin.outputs.root }}\bin\bash.exe" -lc "set -eux; make"
