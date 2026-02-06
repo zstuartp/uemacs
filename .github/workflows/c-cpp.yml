@@ -17,10 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libhunspell-dev \
-            libncurses-dev \
-            pkg-config
+          sudo apt-get install -y             libhunspell-dev             libncurses-dev             pkg-config
       - name: Build
         run: make
 
@@ -48,12 +45,20 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
-          release: "15.0"
+          # 14.3 tends to be a stable default; change if you prefer another supported release.
+          release: "14.3"
           prepare: |
+            set -eux
             pkg update -f
             pkg install -y gmake pkgconf hunspell ncurses
+            gmake --version
+            cc --version || true
           run: |
-            gmake || make
+            set -eux
+            freebsd-version
+            uname -a
+            # Many Makefiles assume GNU make on non-Linux platforms.
+            gmake
 
   build-windows-msys2:
     name: Windows (MSYS2 UCRT64)
@@ -67,11 +72,17 @@ jobs:
           msystem: UCRT64
           update: true
           install: >-
+            make
+            pkgconf
             mingw-w64-ucrt-x86_64-toolchain
-            mingw-w64-ucrt-x86_64-make
-            mingw-w64-ucrt-x86_64-pkgconf
             mingw-w64-ucrt-x86_64-hunspell
             mingw-w64-ucrt-x86_64-ncurses
+            mingw-w64-ucrt-x86_64-pkgconf
+
       - uses: actions/checkout@v4
+
       - name: Build
-        run: make
+        run: |
+          set -eux
+          which make
+          make
