@@ -91,7 +91,7 @@ void vttidy(void)
 	TTflush();
 	TTclose();
 	TTkclose();
-	write(1, "\r", 1);
+	if (write(1, "\r", 1)) { ; }
 }
 
 /*
