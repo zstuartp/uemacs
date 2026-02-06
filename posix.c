@@ -23,12 +23,40 @@
 #include "efunc.h"
 #include "utf8.h"
 
+/*
+ *  The following are gaurds to ensure these various POSIX flags are defined.
+ *
+ *  Not all systems define these flags as many of them are considered optional
+ *  by the standard (e.g. OLCUC and XCASE on macOS).
+ */
 #ifndef OLCUC
 #define OLCUC 0		/* OLCUC is not defined on macOS	*/
 #endif
-
 #ifndef XCASE
 #define XCASE 0		/* XCASE is not define on macOS		*/
+#endif
+#ifndef ECHOCTL
+#define ECHOCTL 0
+#endif
+#ifndef ECHOPRT
+#define ECHOPRT 0
+#endif
+#ifndef ECHOKE
+#define ECHOKE 0
+#endif
+#ifndef FLUSHO
+#define FLUSHO 0
+#endif
+#ifndef PENDIN
+#define PENDIN 0
+#endif
+#ifndef IEXTEN
+#define IEXTEN 0
+#endif
+
+#ifndef HAVE_SETBUFFER
+/* Prefer standard C setvbuf() when setbuffer() isn't available */
+#define setbuffer(stream, buf, size) (void)setvbuf((stream), (buf), _IOFBF, (size))
 #endif
 
 static int kbdflgs;				/* saved keyboard fd flags      */
