@@ -2,7 +2,7 @@
 APP       ?= em
 CC        ?= cc
 
-SRC_DIRS  ?= .
+SRC_DIRS  ?= src
 BUILD_DIR ?= build
 OBJ_DIR   := $(BUILD_DIR)/obj
 BIN_DIR   := $(BUILD_DIR)/bin
