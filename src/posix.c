@@ -56,6 +56,20 @@
 #define IEXTEN 0
 #endif
 
+/* Not defined on FreeBSD */
+#ifndef ONLCR
+#define ONLCR 0
+#endif
+#ifndef OCRNL
+#define OCRNL 0
+#endif
+#ifndef ONOCR
+#define ONOCR 0
+#endif
+#ifndef ONLRET
+#define ONLRET 0
+#endif
+
 #ifndef HAVE_SETBUFFER
 /* Prefer standard C setvbuf() when setbuffer() isn't available */
 #define setbuffer(stream, buf, size) (void)setvbuf((stream), (buf), _IOFBF, (size))
