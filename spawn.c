@@ -37,10 +37,11 @@ int spawncli(int f, int n)
 	TTflush();
 	TTclose();				/* stty to old settings */
 	TTkclose();				/* Close "keyboard" */
-	if ((cp = getenv("SHELL")) != NULL && *cp != '\0')
-		system(cp);
-	else
-		system("exec /bin/sh");
+	if ((cp = getenv("SHELL")) != NULL && *cp != '\0') {
+		IGNORED_RETURN_OK(system(cp));
+	} else {
+		IGNORED_RETURN_OK(system("exec /bin/sh"));
+	}
 	sgarbf = TRUE;
 	sleep(2);
 	TTopen();
@@ -101,7 +102,7 @@ int spawn(int f, int n)
 	TTflush();
 	TTclose();				/* stty to old modes    */
 	TTkclose();
-	system(line);
+	IGNORED_RETURN_OK(system(line));
 	fflush(stdout);				/* to be sure P.K.      */
 	TTopen();
 
@@ -139,7 +140,7 @@ int execprg(int f, int n)
 	TTflush();
 	TTclose();				/* stty to old modes    */
 	TTkclose();
-	system(line);
+	IGNORED_RETURN_OK(system(line));
 	fflush(stdout);				/* to be sure P.K.      */
 	TTopen();
 	mlputs("(End)");			/* Pause.               */
@@ -193,7 +194,7 @@ int filter_buffer(int f, int n)
 	TTclose();				/* stty to old modes    */
 	TTkclose();
 	strcat(line, " <fltinp >fltout");
-	system(line);
+	IGNORED_RETURN_OK(system(line));
 	TTopen();
 	TTkopen();
 	TTflush();
