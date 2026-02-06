@@ -9,6 +9,15 @@
  *	modified by Petri Kutvonen
  */
 
+/*  
+ *  MinGW/MSVCRT declares itoa/ltoa in <stdlib.h> with different signatures.
+ *  Rename our internal helpers on Windows to avoid prototype conflicts.
+ */
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#define itoa  uemacs_itoa
+#define ltoa  uemacs_ltoa
+#endif
+
 /* External function declarations. */
 
 /* word.c */
