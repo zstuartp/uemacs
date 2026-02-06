@@ -19,10 +19,11 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
-#include "version.h"
-#include "wrapper.h"
+#include "spelling.h"
 #include "utf8.h"
 #include "util.h"
+#include "version.h"
+#include "wrapper.h"
 
 struct video {
 	int v_flag;				/* Flags */
