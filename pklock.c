@@ -3,10 +3,6 @@
  *	locking routines as modified by Petri Kutvonen
  */
 
-#include "estruct.h"
-#include "edef.h"
-#include "efunc.h"
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,6 +11,11 @@
 #include <string.h>
 #include <errno.h>
 #include <pwd.h>
+
+#include "estruct.h"
+#include "edef.h"
+#include "efunc.h"
+#include "util.h"
 
 #define MAXLOCK 512
 #define MAXNAME 128
@@ -75,7 +76,8 @@ char *dolock(char *fname)
 
 		/* Write the owner tag to the lock file */
 		lseek(fd, 0, SEEK_SET);
-		write(fd, locker, strlen(locker));
+		if (write(fd, locker, strlen(locker)))
+			perror("uemacs: ERROR: failed to write to lock file.");
 		close(fd);
 		return NULL;
 	}
