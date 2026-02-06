@@ -48,6 +48,8 @@ static int getgoal(struct line *dlp)
  */
 int gotobol(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curwp->w_doto = 0;
 	return TRUE;
 }
@@ -89,6 +91,8 @@ int backchar(int f, int n)
  */
 int gotoeol(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curwp->w_doto = llength(curwp->w_dotp);
 	return TRUE;
 }
@@ -165,6 +169,8 @@ int gotoline(int f, int n)
  */
 int gotobob(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curwp->w_dotp = lforw(curbp->b_linep);
 	curwp->w_doto = 0;
 	curwp->w_flag |= WFHARD;
@@ -178,6 +184,8 @@ int gotobob(int f, int n)
  */
 int gotoeob(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curwp->w_dotp = curbp->b_linep;
 	curwp->w_doto = 0;
 	curwp->w_flag |= WFHARD;
@@ -431,6 +439,8 @@ int backpage(int f, int n)
  */
 int setmark(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curwp->w_markp = curwp->w_dotp;
 	curwp->w_marko = curwp->w_doto;
 	mlwrite("(Mark set)");
@@ -445,6 +455,8 @@ int setmark(int f, int n)
  */
 int swapmark(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct line *odotp;
 	int odoto;
 

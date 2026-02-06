@@ -28,6 +28,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 static int echo_char(int c, int col);
 
@@ -129,6 +130,7 @@ int fisearch(int f, int n)
 
 int isearch(int f, int n)
 {
+	UNUSED_OK(f);
 	int status;				/* Search status */
 	int col;				/* prompt column */
 	int cpos;				/* character number in search string  */
@@ -339,7 +341,7 @@ int scanmore(char *patrn, int dir)
  */
 int match_pat(char *patrn)
 {						/* See if the pattern string matches string at "."   */
-	int i;					/* Generic loop index/offset          */
+	size_t i;				/* Generic loop index/offset          */
 	int buffchar;				/* character at current position      */
 	struct line *curline;			/* current line during scan           */
 	int curoff;				/* position within current line       */

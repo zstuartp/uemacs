@@ -19,6 +19,7 @@
 #include "estruct.h"
 #include "edef.h"
 #include "efunc.h"
+#include "util.h"
 
 #include <signal.h>
 
@@ -202,6 +203,7 @@ static void tcaprev(int state)
 /* Change screen resolution. */
 static int tcapcres(char *res)
 {
+	UNUSED_OK(res);
 	return TRUE;
 }
 

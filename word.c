@@ -13,6 +13,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 /* Word wrap on n-spaces. Back-over whatever precedes the point on the current
  * line and stop on the first word-break or the beginning of the line. If we
@@ -26,6 +27,8 @@
  */
 int wrapword(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int cnt;				/* size of word wrapped to next line */
 	int c;					/* charector temporary */
 
@@ -117,6 +120,7 @@ int forwword(int f, int n)
  */
 int upperword(int f, int n)
 {
+	UNUSED_OK(f);
 	int c;
 
 	if (curbp->b_mode & MDVIEW)		/* don't allow this command if      */
@@ -149,6 +153,7 @@ int upperword(int f, int n)
  */
 int lowerword(int f, int n)
 {
+	UNUSED_OK(f);
 	int c;
 
 	if (curbp->b_mode & MDVIEW)		/* don't allow this command if      */
@@ -182,6 +187,7 @@ int lowerword(int f, int n)
  */
 int capword(int f, int n)
 {
+	UNUSED_OK(f);
 	int c;
 
 	if (curbp->b_mode & MDVIEW)		/* don't allow this command if      */
@@ -225,6 +231,7 @@ int capword(int f, int n)
  */
 int delfword(int f, int n)
 {
+	UNUSED_OK(f);
 	struct line *dotp;			/* original cursor line */
 	int doto;				/*      and row */
 	int c;					/* temp char */
@@ -314,6 +321,7 @@ int delfword(int f, int n)
  */
 int delbword(int f, int n)
 {
+	UNUSED_OK(f);
 	long size;
 
 	/* don't allow this command if we are in read only mode */
@@ -375,6 +383,8 @@ int inword(void)
  */
 int fillpara(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	unicode_t c;				/* current char during scan    */
 	unicode_t wbuf[NSTRING];		/* buffer for current word      */
 	int wordlen;				/* length of current word       */
@@ -471,6 +481,8 @@ int fillpara(int f, int n)
  */
 int justpara(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	unicode_t c;				/* current char durring scan    */
 	unicode_t wbuf[NSTRING];		/* buffer for current word      */
 	int wordlen;				/* length of current word       */
@@ -582,6 +594,7 @@ int justpara(int f, int n)
  */
 int killpara(int f, int n)
 {
+	UNUSED_OK(f);
 	int status;				/* returned status of functions */
 
 	while (n--) {				/* for each paragraph to delete */
@@ -616,6 +629,8 @@ int killpara(int f, int n)
  */
 int wordcount(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct line *lp;			/* current line to scan */
 	int offset;				/* current char to scan */
 	long size;				/* size of region left to count */

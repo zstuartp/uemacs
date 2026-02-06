@@ -183,6 +183,8 @@ static void vteeol(void)
  */
 int upscreen(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	update(TRUE);
 	return TRUE;
 }
@@ -482,10 +484,11 @@ void updgar(void)
  */
 int updupd(int force)
 {
-	struct video *vp1;
-	int i;
+	UNUSED_OK(force);
+	struct video *vp1 = NULL;
+	size_t i = 0;
 
-	for (i = 0; i < term.t_nrow; ++i) {
+	for (; i < (size_t)term.t_nrow; ++i) {
 		vp1 = vscreen[i];
 
 		/* for each line that needs to be updated */
@@ -544,7 +547,7 @@ static bool is_notaword(unicode_t ch)
 
 static int find_letter(unicode_t *line, size_t len, int pos)
 {
-	while (pos < len) {
+	while ((size_t)pos < len) {
 		if (is_letter(line[pos]))
 			return pos;
 		pos++;
@@ -554,12 +557,12 @@ static int find_letter(unicode_t *line, size_t len, int pos)
 
 static int find_not_letter(unicode_t *line, size_t len, int pos)
 {
-	while (pos < len) {
+	while ((size_t)pos < len) {
 		if (!is_letter(line[pos]))
 			return pos;
 		pos++;
 	}
-	return len;
+	return (int)len;
 }
 
 #define BAD_WORD_BEGIN 1
@@ -578,8 +581,8 @@ static size_t findwords(unicode_t *line, size_t len, unsigned char *result, size
 		int end = find_not_letter(line, len, pos + 1);
 
 		// Special case: allow (one) apostrophe for abbreviations
-		if (end + 1 < len && line[end] == '\'' && is_letter(line[end + 1]))
-			end = find_not_letter(line, len, end + 2);
+		if ((size_t)end + 1 < len && line[end] == '\'' && is_letter(line[end + 1]))
+			end = (size_t)find_not_letter(line, len, end + 2);
 
 		pos = end + 1;
 
@@ -587,17 +590,17 @@ static size_t findwords(unicode_t *line, size_t len, unsigned char *result, size
 		// not a word, it's a hex number or a variable name
 		if (start && is_notaword(line[start - 1]))
 			continue;
-		if (end < len && is_notaword(line[end]))
+		if ((size_t)end < len && is_notaword(line[end]))
 			continue;
 
 		// We found something that may be a real word.
 		// Check it, and mark it in the result
-		if (end > size)
+		if ((size_t)end > size)
 			break;
 
 		char word_buffer[80];
 		int word_len = end - start;
-		if (word_len >= sizeof(word_buffer) - 1)
+		if ((size_t)word_len >= sizeof(word_buffer) - 1)
 			continue;
 		for (int i = 0; i < word_len; i++)
 			word_buffer[i] = line[start + i];
@@ -1064,6 +1067,7 @@ void getscreensize(int *widthp, int *heightp)
 
 void sizesignal(int signr)
 {
+	UNUSED_OK(signr);
 	int w, h;
 	int old_errno = errno;
 

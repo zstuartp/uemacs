@@ -12,6 +12,7 @@
 #include "efunc.h"
 #include "line.h"
 #include "wrapper.h"
+#include "util.h"
 
 /*
  * Reposition dot in the current window to line "n". If the argument is
@@ -34,6 +35,7 @@ int reposition(int f, int n)
  */
 int redraw(int f, int n)
 {
+	UNUSED_OK(n);
 	if (f == FALSE)
 		sgarbf = TRUE;
 	else {

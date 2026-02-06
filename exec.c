@@ -13,6 +13,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 /*
  * Execute a named command even if it is not bound.
@@ -44,6 +45,8 @@ int namedcmd(int f, int n)
  */
 int execcmd(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int status;				/* status return */
 	char cmdstr[NSTRING];			/* string holding command to execute */
 
@@ -335,6 +338,7 @@ int storeproc(int f, int n)
  */
 int execproc(int f, int n)
 {
+	UNUSED_OK(f);
 	struct buffer *bp;			/* ptr to buffer to execute */
 	int status;				/* status return */
 	char bufn[NBUFN + 2];			/* name of buffer to execute */
@@ -368,6 +372,7 @@ int execproc(int f, int n)
  */
 int execbuf(int f, int n)
 {
+	UNUSED_OK(f);
 	struct buffer *bp;			/* ptr to buffer to execute */
 	int status;				/* status return */
 	char bufn[NSTRING];			/* name of buffer to execute */
@@ -771,6 +776,7 @@ void freewhile(struct while_block *wp)
  */
 int execfile(int f, int n)
 {
+	UNUSED_OK(f);
 	int status;				/* return status of name query */
 	char fname[NSTRING];			/* name of file to execute */
 	char *fspec;				/* full file spec */
@@ -841,6 +847,7 @@ int dofile(char *fname)
  */
 int cbuf(int f, int n, int bufnum)
 {
+	UNUSED_OK(f);
 	struct buffer *bp;			/* ptr to buffer to execute */
 	int status;				/* status return */
 	static char bufname[] = "*Macro xx*";

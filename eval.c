@@ -36,7 +36,7 @@ void varinit(void)
  */
 char *gtfun(char *fname)
 {
-	int fnum;				/* index to function to eval */
+	size_t fnum;				/* index to function to eval */
 	int status;				/* return status */
 	char *tsp;				/* temporary string pointer */
 	char arg1[NSTRING];			/* value of first argument */
@@ -195,7 +195,8 @@ static char *getkill(void);
  */
 char *gtenv(char *vname)
 {
-	int vnum;				/* ordinal number of var refrenced */
+	size_t vnum;		/* ordinal number of var refrenced */
+	
 
 	/* scan the list, looking for the referenced name */
 	for (vnum = 0; vnum < ARRAY_SIZE(envars); vnum++)
@@ -380,7 +381,7 @@ int setvar(int f, int n)
  */
 void findvar(char *var, struct variable_description *vd, int size)
 {
-	int vnum;				/* subscript in variable arrays */
+	size_t vnum;				/* subscript in variable arrays */
 	int vtype;				/* type to return */
 
 	vnum = -1;

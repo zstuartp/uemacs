@@ -31,7 +31,7 @@ DEPS := $(OBJS:.o=.d)
 
 # ---------- Build flags ----------
 CPPFLAGS += -Iinclude
-CFLAGS   += -std=c99 -Wall 
+CFLAGS   += -std=c99 -Wall -Wextra -Werror -pedantic
 
 DEBUG ?= 0
 ifeq ($(DEBUG),1)

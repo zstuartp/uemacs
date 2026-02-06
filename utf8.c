@@ -85,7 +85,7 @@ unsigned unicode_to_utf8(unsigned int c, char *utf8)
 
 	*utf8 = c;
 	if (c > 0x7f) {
-		int prefix = 0x40;
+		unsigned int prefix = 0x40;
 		char *p = utf8;
 		do {
 			*p++ = 0x80 + (c & 0x3f);

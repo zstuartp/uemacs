@@ -21,6 +21,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "utf8.h"
+#include "util.h"
 
 #define	BLOCK_SIZE 16				/* Line block chunk size. */
 
@@ -618,6 +619,7 @@ int kinsert(int c)
  */
 int yank(int f, int n)
 {
+	UNUSED_OK(f);
 	int c;
 	int i;
 	char *sp;				/* pointer into string to insert */

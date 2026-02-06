@@ -13,6 +13,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 /*
  * Kill the region. Ask "getregion"
@@ -22,6 +23,8 @@
  */
 int killregion(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	struct region region;
 
@@ -45,6 +48,8 @@ int killregion(int f, int n)
  */
 int copyregion(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct line *linep;
 	int loffs;
 	int s;
@@ -83,6 +88,8 @@ int copyregion(int f, int n)
  */
 int lowerregion(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct line *linep;
 	int loffs;
 	int c;
@@ -120,6 +127,8 @@ int lowerregion(int f, int n)
  */
 int upperregion(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct line *linep;
 	int loffs;
 	int c;

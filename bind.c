@@ -16,8 +16,11 @@
 #include "line.h"
 #include "util.h"
 
+/* describe the command for a certain key */
 int deskey(int f, int n)
-{						/* describe the command for a certain key */
+{	
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int c;					/* key to describe */
 	char *ptr;				/* string pointer to scan output strings */
 	char outseq[NSTRING];			/* output buffer for command sequence */
@@ -50,6 +53,8 @@ int deskey(int f, int n)
  */
 int bindtokey(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	unsigned int c;				/* command key to bind */
 	fn_t kfunc;				/* ptr to the requested function to bind to */
 	struct key_tab *ktp;			/* pointer into the command table */
@@ -103,7 +108,7 @@ int bindtokey(int f, int n)
 	ktp = &keytab[0];
 	found = FALSE;
 	while (ktp->k_fp != NULL) {
-		if (ktp->k_code == c) {
+		if (ktp->k_code == (int)c) {
 			found = TRUE;
 			break;
 		}
@@ -136,6 +141,8 @@ int bindtokey(int f, int n)
  */
 int unbindkey(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int c;					/* command key to unbind */
 	char outseq[80];			/* output buffer for keystroke sequence */
 
@@ -297,7 +304,7 @@ char *flook(char *fname, int hflag)
 	char *home;				/* path to home directory */
 	char *path;				/* environmental PATH variable */
 	char *sp;				/* pointer into path spec */
-	int i;					/* index */
+	size_t i;				/* index */
 	static char fspec[NSTRING];		/* full path spec to search */
 
 	if (hflag) {

@@ -15,6 +15,7 @@
 #include "edef.h"
 #include "efunc.h"
 #include "line.h"
+#include "util.h"
 
 /*
  * Attach a buffer to a window. The
@@ -24,6 +25,8 @@
  */
 int usebuffer(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct buffer *bp;
 	int s;
 	char bufn[NBUFN];
@@ -118,6 +121,8 @@ int swbuffer(struct buffer *bp)
  */
 int killbuffer(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct buffer *bp;
 	int s;
 	char bufn[NBUFN];
@@ -169,6 +174,8 @@ int zotbuf(struct buffer *bp)
  */
 int namebuffer(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct buffer *bp;			/* pointer to scan through all buffers */
 	char bufn[NBUFN];			/* buffer to hold buffer name */
 
@@ -353,6 +360,8 @@ int bclear(struct buffer *bp)
  */
 int unmark(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	curbp->b_flag &= ~BFCHG;
 	curwp->w_flag |= WFMODE;
 	return TRUE;

@@ -63,6 +63,7 @@
 #include "efunc.h"				/* Function declarations and name table. */
 #include "ebind.h"				/* Default key bindings. */
 #include "spelling.h"
+#include "util.h"
 #include "version.h"
 
 #include <signal.h>
@@ -476,6 +477,7 @@ int quickexit(int f, int n)
 
 static void emergencyexit(int signr)
 {
+	UNUSED_OK(signr);
 	quickexit(FALSE, 0);
 	quit(TRUE, 0);
 }
@@ -486,6 +488,7 @@ static void emergencyexit(int signr)
  */
 int quit(int f, int n)
 {
+	UNUSED_OK(n);
 	int s;
 
 	if (f != FALSE				/* Argument forces it.  */
@@ -519,6 +522,8 @@ int quit(int f, int n)
  */
 int ctlxlp(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	if (kbdmode != STOP) {
 		mlwrite("%%Macro already active");
 		return FALSE;
@@ -536,6 +541,9 @@ int ctlxlp(int f, int n)
  */
 int ctlxrp(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
+
 	if (kbdmode == STOP) {
 		mlwrite("%%Macro not active");
 		return FALSE;
@@ -554,6 +562,7 @@ int ctlxrp(int f, int n)
  */
 int ctlxe(int f, int n)
 {
+	UNUSED_OK(f);
 	if (kbdmode != STOP) {
 		mlwrite("%%Macro already active");
 		return FALSE;
@@ -573,6 +582,8 @@ int ctlxe(int f, int n)
  */
 int ctrlg(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	TTbeep();
 	kbdmode = STOP;
 	mlwrite("(Aborted)");
@@ -600,23 +611,31 @@ int resterr(void)
 /* user function that does NOTHING */
 int nullproc(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	return TRUE;
 }
 
 /* dummy function for binding to meta prefix */
 int metafn(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	return TRUE;
 }
 
 /* dummy function for binding to control-x prefix */
 int cex(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	return TRUE;
 }
 
 /* dummy function for binding to universal-argument */
 int unarg(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	return TRUE;
 }

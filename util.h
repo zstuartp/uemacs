@@ -2,6 +2,7 @@
 #define UTIL_H_
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+#define UNUSED_OK(x) (void)x
 
 /* Safe zeroing, no complaining about overlap */
 static inline void mystrscpy(char *dst, const char *src, int size)
@@ -19,7 +20,7 @@ static inline void mystrscpy(char *dst, const char *src, int size)
 
 // Overly simplistic "how does the column number change
 // based on character 'c'" function
-static inline int next_column(int old, unicode_t c)
+static inline int next_column(int old, unsigned int c)
 {
 	if (c == '\t')
 		return (old | tabmask) + 1;

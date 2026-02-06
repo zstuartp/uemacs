@@ -28,6 +28,8 @@
  */
 int fileread(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	char fname[NFILEN];
 
@@ -47,6 +49,8 @@ int fileread(int f, int n)
  */
 int insfile(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	char fname[NFILEN];
 
@@ -72,6 +76,8 @@ int insfile(int f, int n)
  */
 int filefind(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	char fname[NFILEN];			/* file user wishes to find */
 	int s;					/* status return */
 
@@ -82,8 +88,12 @@ int filefind(int f, int n)
 	return getfile(fname, TRUE);
 }
 
+
+/* visit a file in VIEW mode */
 int viewfile(int f, int n)
-{						/* visit a file in VIEW mode */
+{
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	char fname[NFILEN];			/* file user wishes to find */
 	int s;					/* status return */
 
@@ -312,6 +322,8 @@ void unqname(char *name)
  */
 int filewrite(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	struct window *wp;
 	int s;
 	char fname[NFILEN];
@@ -340,6 +352,8 @@ int filewrite(int f, int n)
  */
 int filesave(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 
 	if (curbp->b_mode & MDVIEW)		/* don't allow this command if      */
@@ -418,6 +432,8 @@ int writeout(char *fn)
  */
 int filename(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	char fname[NFILEN];
 

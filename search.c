@@ -628,7 +628,7 @@ static int readpattern(char *prompt, char *apat, int srch)
 void savematch(void)
 {
 	char *ptr;				/* pointer to last match string */
-	int j;
+	size_t j;
 	struct line *curline;			/* line of last match */
 	int curoff;				/* offset "      "    */
 

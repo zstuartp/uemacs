@@ -11,6 +11,7 @@
 #include "estruct.h"
 #include "edef.h"
 #include "efunc.h"
+#include "util.h"
 
 #include        <signal.h>
 extern int chg_width, chg_height;
@@ -24,6 +25,8 @@ extern void sizesignal(int);
  */
 int spawncli(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	char *cp;
 
 	/* don't allow this command if restricted */
@@ -54,8 +57,11 @@ int spawncli(int f, int n)
 	return TRUE;
 }
 
+/* suspend MicroEMACS and wait to wake up */
 int bktoshell(int f, int n)
-{						/* suspend MicroEMACS and wait to wake up */
+{
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	vttidy();
 /******************************
 	int pid;
@@ -81,6 +87,8 @@ void rtfrmshell(void)
  */
 int spawn(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	char line[NLINE];
 
@@ -116,6 +124,8 @@ int spawn(int f, int n)
 
 int execprg(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;
 	char line[NLINE];
 
@@ -145,6 +155,8 @@ int execprg(int f, int n)
  */
 int filter_buffer(int f, int n)
 {
+	UNUSED_OK(f);
+	UNUSED_OK(n);
 	int s;					/* return status from CLI */
 	struct buffer *bp;			/* pointer to buffer to zot */
 	char line[NLINE];			/* command line send to shell */
