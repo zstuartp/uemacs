@@ -1,122 +1,114 @@
-# makefile for emacs, updated Sun Apr 28 17:59:07 EET DST 1996
+# ---------- Project settings ----------
+APP       ?= em
+CC        ?= cc
 
-# Make the build silent by default
-V =
+SRC_DIRS  ?= .
+BUILD_DIR ?= build
+OBJ_DIR   := $(BUILD_DIR)/obj
+BIN_DIR   := $(BUILD_DIR)/bin
+TARGET    := $(BIN_DIR)/$(APP)
+CLEAN_STAMP := $(BUILD_DIR)/.make-created
 
-ifeq ($(strip $(V)),)
-	E = @echo
-	Q = @
+# ---------- Pretty output / verbosity ----------
+V ?= 0
+ifeq ($(V),1)
+  Q :=
+  define log
+  endef
 else
-	E = @\#
-	Q =
+  Q := @
+  define log
+	@printf "  %-6s %s\n" "$(1)" "$(2)"
+  endef
 endif
-export E Q
 
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# ---------- Source discovery ----------
+SRCS := $(shell find $(SRC_DIRS) -type f -name '*.c' \
+	-not -path '*/$(BUILD_DIR)/*' -not -path '*/.git/*' -print | sed 's|^\./||')
 
-PROGRAM=em
+OBJS := $(addprefix $(OBJ_DIR)/,$(SRCS:.c=.o))
+DEPS := $(OBJS:.o=.d)
 
-SRC=	basic.c bind.c buffer.c display.c eval.c exec.c file.c fileio.c \
-	globals.c input.c isearch.c line.c lock.c main.c names.c \
-	pklock.c posix.c random.c region.c search.c spawn.c tcap.c \
-	usage.c utf8.c version.c window.c word.c wrapper.c
+# ---------- Build flags ----------
+CPPFLAGS += -Iinclude
+CFLAGS   += -std=c99 -Wall 
 
-OBJ=	basic.o bind.o buffer.o display.o eval.o exec.o file.o fileio.o \
-	globals.o input.o isearch.o line.o lock.o main.o names.o \
-	pklock.o posix.o random.o region.o search.o spawn.o tcap.o \
-	usage.o utf8.o version.o window.o word.o wrapper.o
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+  CFLAGS += -O0 -g
+else
+  CFLAGS += -O2
+endif
 
-HDR=	ebind.h edef.h efunc.h epath.h estruct.h evar.h line.h usage.h \
-	utf8.h util.h version.h wrapper.h
+# ---------- ncurses + hunspell discovery ----------
+PKG_CONFIG ?= pkg-config
 
-# DO NOT ADD OR MODIFY ANY LINES ABOVE THIS -- make source creates them
+PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags hunspell ncursesw 2>/dev/null \
+	|| $(PKG_CONFIG) --cflags hunspell ncurses 2>/dev/null)
+PKG_LIBS   := $(shell $(PKG_CONFIG) --libs hunspell ncursesw 2>/dev/null \
+	|| $(PKG_CONFIG) --libs hunspell ncurses 2>/dev/null)
 
-CC=gcc
-WARNINGS=-Wall -Wstrict-prototypes
-DEFINES=-DPOSIX -D_GNU_SOURCE
+HOMEBREW_PREFIX ?= $(shell brew --prefix 2>/dev/null)
+ifneq ($(strip $(HOMEBREW_PREFIX)),)
+  BREW_CPPFLAGS := -I$(HOMEBREW_PREFIX)/include
+  BREW_LDFLAGS  := -L$(HOMEBREW_PREFIX)/lib
+endif
 
-CFLAGS=-O2 $(WARNINGS) $(DEFINES)
+ifeq ($(strip $(PKG_CFLAGS)),)
+  CPPFLAGS += $(BREW_CPPFLAGS)
+  LDFLAGS  += $(BREW_LDFLAGS)
+  LDLIBS   += -lhunspell-1.7 -lncurses
+else
+  CPPFLAGS += $(PKG_CFLAGS)
+  LDLIBS   += $(PKG_LIBS)
+endif
 
-LIBS=ncurses hunspell
-BINDIR=$(HOME)/bin
-LIBDIR=$(HOME)/lib
+# ---------- Targets ----------
+.PHONY: all clean run print-vars
+all: $(TARGET)
 
-CFLAGS += $(shell pkg-config --cflags $(LIBS))
-LDLIBS += $(shell pkg-config --libs $(LIBS))
+$(TARGET): $(OBJS) | $(BIN_DIR)
+	$(call log,LD,$@)
+	$(Q)$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(PROGRAM): $(OBJ)
-	$(E) "  LINK    " $@
-	$(Q) $(CC) $(LDFLAGS) $(DEFINES) -o $@ $(OBJ) $(LDLIBS)
+$(BIN_DIR):
+	$(call log,MKDIR,$@)
+	$(Q)mkdir -p $@
+	$(Q)mkdir -p $(BUILD_DIR)
+	$(Q)touch $(CLEAN_STAMP)
 
-.c.o:
-	$(E) "  CC      " $@
-	$(Q) ${CC} ${CFLAGS} -c $<
+$(OBJ_DIR)/%.o: %.c
+	$(call log,CC,$<)
+	$(Q)mkdir -p $(@D)
+	$(Q)mkdir -p $(BUILD_DIR)
+	$(Q)touch $(CLEAN_STAMP)
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+-include $(DEPS)
+
+# ---------- Safer clean ----------
 clean:
-	$(E) "  CLEAN"
-	$(Q) rm -f $(PROGRAM) core lintout makeout tags makefile.bak *.o
+	$(call log,CLEAN,$(BUILD_DIR))
+	@set -eu; \
+	dir="$(BUILD_DIR)"; \
+	case "$$dir" in \
+		""|"/"|"~"|"."|".."|"../"*|"/Users"|"/home"|"/root") \
+			echo "Refusing to clean unsafe BUILD_DIR='$$dir'"; exit 1 ;; \
+	esac; \
+	if [ ! -f "$(CLEAN_STAMP)" ]; then \
+		echo "Refusing to clean: missing stamp '$(CLEAN_STAMP)' (not created by this Makefile?)"; \
+		echo "If you're sure, run: make clean FORCE=1"; \
+		if [ "$${FORCE:-0}" != "1" ]; then exit 1; fi; \
+	fi; \
+	rm -rf -- "$$dir"
 
-install: $(PROGRAM)
-	install em ${BINDIR}
-	cp emacs.hlp ${LIBDIR}
-	cp emacs.rc ${HOME}/.emacsrc
-	chmod 755 ${BINDIR}/em
-	chmod 644 ${LIBDIR}/emacs.hlp ${HOME}/.emacsrc
+run: $(TARGET)
+	$(Q)./$(TARGET)
 
-source:
-	@mv makefile makefile.bak
-	@echo "# makefile for emacs, updated `date`" >makefile
-	@echo '' >>makefile
-	@echo SRC=`ls *.c` >>makefile
-	@echo OBJ=`ls *.c | sed s/c$$/o/` >>makefile
-	@echo HDR=`ls *.h` >>makefile
-	@echo '' >>makefile
-	@sed -n -e '/^# DO NOT ADD OR MODIFY/,$$p' <makefile.bak >>makefile
+print-vars:
+	@echo "SRCS=$(SRCS)"
+	@echo "PKG_CFLAGS=$(PKG_CFLAGS)"
+	@echo "PKG_LIBS=$(PKG_LIBS)"
+	@echo "HOMEBREW_PREFIX=$(HOMEBREW_PREFIX)"
+	:w
 
-depend: ${SRC}
-	@for i in ${SRC}; do $(CC) ${DEFINES} -MM $$i; done >makedep
-	@echo '/^# DO NOT DELETE THIS LINE/+2,$$d' >eddep
-	@echo '$$r ./makedep' >>eddep
-	@echo 'w' >>eddep
-	@cp makefile makefile.bak
-	@ed - makefile <eddep
-	@rm eddep makedep
-	@echo '' >>makefile
-	@echo '# DEPENDENCIES MUST END AT END OF FILE' >>makefile
-	@echo '# IF YOU PUT STUFF HERE IT WILL GO AWAY' >>makefile
-	@echo '# see make depend above' >>makefile
-
-# DO NOT DELETE THIS LINE -- make depend uses it
-
-basic.o: basic.c estruct.h edef.h efunc.h line.h utf8.h
-bind.o: bind.c estruct.h edef.h efunc.h epath.h line.h utf8.h util.h
-buffer.o: buffer.c estruct.h edef.h efunc.h line.h utf8.h
-display.o: display.c estruct.h edef.h efunc.h line.h utf8.h version.h wrapper.h
-eval.o: eval.c estruct.h edef.h efunc.h evar.h line.h utf8.h util.h version.h
-exec.o: exec.c estruct.h edef.h efunc.h line.h utf8.h
-file.o: file.c estruct.h edef.h efunc.h line.h utf8.h util.h
-fileio.o: fileio.c estruct.h edef.h efunc.h
-input.o: input.c estruct.h edef.h efunc.h wrapper.h
-isearch.o: isearch.c estruct.h edef.h efunc.h line.h utf8.h
-line.o: line.c line.h utf8.h estruct.h edef.h efunc.h
-lock.o: lock.c estruct.h edef.h efunc.h
-main.o: main.c estruct.h edef.h efunc.h ebind.h line.h utf8.h version.h
-pklock.o: pklock.c estruct.h edef.h efunc.h
-posix.o: posix.c estruct.h edef.h efunc.h utf8.h
-random.o: random.c estruct.h edef.h efunc.h line.h utf8.h
-region.o: region.c estruct.h edef.h efunc.h line.h utf8.h
-search.o: search.c estruct.h edef.h efunc.h line.h utf8.h
-spawn.o: spawn.c estruct.h edef.h efunc.h
-tcap.o: tcap.c estruct.h edef.h efunc.h
-window.o: window.c estruct.h edef.h efunc.h line.h utf8.h wrapper.h
-word.o: word.c estruct.h edef.h efunc.h line.h utf8.h
-names.o: names.c estruct.h edef.h efunc.h line.h utf8.h
-globals.o: globals.c estruct.h edef.h
-version.o: version.c version.h
-usage.o: usage.c usage.h
-wrapper.o: wrapper.c usage.h
-utf8.o: utf8.c utf8.h
-
-# DEPENDENCIES MUST END AT END OF FILE
-# IF YOU PUT STUFF HERE IT WILL GO AWAY
-# see make depend above
