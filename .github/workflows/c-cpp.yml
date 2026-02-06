@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             libhunspell-dev             libncurses-dev             pkg-config
+          sudo apt-get install -y libhunspell-dev libncurses-dev pkg-config
       - name: Build
         run: |
           set -eux
@@ -63,7 +63,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - run: git config --global core.autocrlf input
-
       - uses: actions/checkout@v4
 
       - name: Install Cygwin + deps
@@ -79,5 +78,7 @@ jobs:
             libncurses-devel
 
       - name: Build
+        shell: pwsh
         run: |
-          & "${{ steps.cygwin.outputs.root }}\bin\bash.exe" -lc "set -eux; make"
+          $bash = "${{ steps.cygwin.outputs.root }}\bin\bash.exe"
+          & $bash -lc 'set -eux; cd "$(cygpath -u "$GITHUB_WORKSPACE")"; make'
