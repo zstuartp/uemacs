@@ -30,7 +30,7 @@ OBJS := $(addprefix $(OBJ_DIR)/,$(SRCS:.c=.o))
 DEPS := $(OBJS:.o=.d)
 
 # ---------- Build flags ----------
-CPPFLAGS += -Iinclude
+CPPFLAGS += -Iinclude -D_POSIX_C_SOURCE=200809L
 CFLAGS   += -std=c99 -Wall -Wextra -Werror -pedantic
 
 DEBUG ?= 0
