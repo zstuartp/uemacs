@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -179,13 +181,26 @@ static struct {
 /* Pause for x*.1 second lag or until keypress */
 static void pause_read(int pause)
 {
-	int n;
+	size_t avail;
+	ssize_t n;
+
+	n = 0;
 
 	ntermios.c_cc[VMIN] = 0;
 	ntermios.c_cc[VTIME] = pause;
 	tcsetattr(0, TCSANOW, &ntermios);
 
-	n = read(0, TT.buf + TT.nr, sizeof(TT.buf) - TT.nr);
+	/* Clamp to avoid size_t underflow and potential over-read */
+	if (TT.nr < 0)
+		TT.nr = 0;
+	avail = sizeof(TT.buf);
+	if ((size_t)TT.nr >= avail)
+		goto out;
+	avail -= (size_t)TT.nr;
+
+	n = read(0, TT.buf + TT.nr, avail);
+
+out:
 
 	/* Undo timeout */
 	ntermios.c_cc[VMIN] = 1;
@@ -193,7 +208,7 @@ static void pause_read(int pause)
 	tcsetattr(0, TCSANOW, &ntermios);
 
 	if (n > 0)
-		TT.nr += n;
+		TT.nr += (int)n;
 }
 
 void ttpause(void)
@@ -214,10 +229,15 @@ int ttgetc(void)
 
 	count = TT.nr;
 	if (!count) {
-		count = read(0, TT.buf, sizeof(TT.buf));
-		if (count <= 0)
+		ssize_t nread;
+
+		nread = read(0, TT.buf, sizeof(TT.buf));
+		if (nread <= 0)
 			return 0;
-		TT.nr = count;
+		if (nread > (ssize_t)sizeof(TT.buf))
+			nread = (ssize_t)sizeof(TT.buf);
+		TT.nr = (int)nread;
+		count = TT.nr;
 	}
 
 	c = (unsigned char)TT.buf[0];
@@ -262,7 +282,9 @@ int ttgetc(void)
 		c = ' ';
  done:
 	TT.nr -= bytes;
-	memmove(TT.buf, TT.buf + bytes, TT.nr);
+	if (TT.nr < 0)
+		TT.nr = 0;
+	memmove(TT.buf, TT.buf + bytes, (size_t)TT.nr);
 	return c;
 }
 
