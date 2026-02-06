@@ -19,7 +19,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y             libhunspell-dev             libncurses-dev             pkg-config
       - name: Build
-        run: make
+        run: |
+          set -eux
+          make
 
   build-macos:
     name: macOS
@@ -34,7 +36,9 @@ jobs:
           echo "CPPFLAGS=-I$(brew --prefix ncurses)/include -I$(brew --prefix hunspell)/include $CPPFLAGS" >> "$GITHUB_ENV"
           echo "LDFLAGS=-L$(brew --prefix ncurses)/lib -L$(brew --prefix hunspell)/lib $LDFLAGS" >> "$GITHUB_ENV"
       - name: Build
-        run: make
+        run: |
+          set -eux
+          make
 
   build-freebsd:
     name: FreeBSD (VM)
@@ -45,23 +49,17 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
-          # 14.3 tends to be a stable default; change if you prefer another supported release.
           release: "14.3"
           prepare: |
             set -eux
             pkg update -f
             pkg install -y gmake pkgconf hunspell ncurses
-            gmake --version
-            cc --version || true
           run: |
             set -eux
-            freebsd-version
-            uname -a
-            # Many Makefiles assume GNU make on non-Linux platforms.
             gmake
 
   build-windows-msys2:
-    name: Windows (MSYS2 UCRT64)
+    name: Windows (MSYS2 POSIX)
     runs-on: windows-latest
     defaults:
       run:
@@ -69,20 +67,19 @@ jobs:
     steps:
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64
+          # MSYS provides POSIX headers like <sys/ioctl.h>
+          msystem: MSYS
           update: true
           install: >-
+            gcc
             make
             pkgconf
-            mingw-w64-ucrt-x86_64-toolchain
-            mingw-w64-ucrt-x86_64-hunspell
-            mingw-w64-ucrt-x86_64-ncurses
-            mingw-w64-ucrt-x86_64-pkgconf
+            hunspell
+            ncurses
 
       - uses: actions/checkout@v4
 
       - name: Build
         run: |
           set -eux
-          which make
           make
