@@ -20,6 +20,10 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#if defined(__CYGWIN__)
+#  include <sys/socket.h>
+#endif
+
 #include "estruct.h"
 #include "edef.h"
 #include "efunc.h"
