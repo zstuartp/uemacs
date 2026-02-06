@@ -8,12 +8,13 @@
  *	Modified by Petri Kutvonen
  */
 
+#include <ctype.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <unistd.h>
-#include <ctype.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "estruct.h"
 #include "edef.h"
