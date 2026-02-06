@@ -509,7 +509,7 @@ int getstring(char *prompt, char *buf, int nbuf, int eolchar)
 				xmkstemp(tmp);
 				strcat(ffbuf, tmp);
 				strcat(ffbuf, " 2>&1");
-				system(ffbuf);
+				if (system(ffbuf)) { ; }
 				tmpf = fopen(tmp, "r");
 				nskip = 0;
 			}
