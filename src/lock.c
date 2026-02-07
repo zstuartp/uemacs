@@ -107,9 +107,7 @@ int lock(char *fname)
 	}
 
 	/* someone else has it....override? */
-	strcpy(msg, "File in use by ");
-	strcat(msg, locker);
-	strcat(msg, ", override?");
+	(void)snprintf(msg, sizeof(msg), "File in use by %s, override?", locker);
 	status = mlyesno(msg);			/* ask them */
 	if (status == TRUE)
 		return FALSE;
@@ -147,8 +145,6 @@ void lckerror(char *errstr)
 {
 	char obuf[NSTRING];			/* output buffer for error message */
 
-	strcpy(obuf, errstr);
-	strcat(obuf, " - ");
-	strcat(obuf, strerror(errno));
-	mlwrite(obuf);
+	(void)snprintf(obuf, sizeof(obuf), "%s - %s", errstr, strerror(errno));
+	mlwrite("%s", obuf);
 }

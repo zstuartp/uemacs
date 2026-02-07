@@ -34,7 +34,9 @@ char *dolock(char *fname)
 	int mask;
 	struct stat sbuf;
 
-	strcat(strcpy(lname, fname), ".lock~");
+	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
+	    >= (int)sizeof(lname))
+		return "LOCK ERROR: lock file path too long";
 
 	/* check that we are not being cheated, qname must point to     */
 	/* a regular file - even this code leaves a small window of     */
@@ -71,8 +73,18 @@ char *dolock(char *fname)
 		} else {
 			snprintf(locker, sizeof(locker), "%s", user);
 		}
-		strcat(locker + strlen(locker), "@");
-		gethostname(locker + strlen(locker), 64);
+		{
+			size_t used = strlen(locker);
+
+			/* Append host safely without overflowing locker. */
+			if (used < sizeof(locker) - 1) {
+				locker[used++] = '@';
+				if (gethostname(locker + used,
+						sizeof(locker) - used) != 0)
+					locker[used] = '\0';
+				locker[sizeof(locker) - 1] = '\0';
+			}
+		}
 
 		/* Write the owner tag to the lock file */
 		lseek(fd, 0, SEEK_SET);
@@ -98,7 +110,9 @@ char *undolock(char *fname)
 {
 	static char lname[MAXLOCK];
 
-	strcat(strcpy(lname, fname), ".lock~");
+	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
+	    >= (int)sizeof(lname))
+		return "LOCK ERROR: lock file path too long";
 	if (unlink(lname) != 0) {
 		if (errno == EACCES || errno == ENOENT)
 			return NULL;
