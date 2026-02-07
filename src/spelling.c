@@ -29,16 +29,66 @@ static bool file_accessable(const char *path) {
 	return (access(path, R_OK) == 0);
 }
 
+static Hunhandle *try_dictionary_in_dir(const char *dir, const char *dic_tag)
+{
+	char aff_path[MAX_PATH_LENGTH];
+	char dic_path[MAX_PATH_LENGTH];
+	const char *base_dir = dir;
+
+	if (dic_tag == NULL || dic_tag[0] == '\0')
+		return NULL;
+
+	if (base_dir == NULL)
+		return NULL;
+	if (base_dir[0] == '\0')
+		base_dir = ".";
+
+	if (snprintf(aff_path, sizeof(aff_path),
+		     "%s/%s.aff", base_dir, dic_tag) >= (int)sizeof(aff_path))
+		return NULL;
+	if (snprintf(dic_path, sizeof(dic_path),
+		     "%s/%s.dic", base_dir, dic_tag) >= (int)sizeof(dic_path))
+		return NULL;
+
+	if (file_accessable(aff_path) == false
+	    || file_accessable(dic_path) == false)
+		return NULL;
+
+	return Hunspell_create(aff_path, dic_path);
+}
+
+static Hunhandle *try_dictionary_dir(const char *dir,
+				     const char *tag,
+				     const char *language)
+{
+	Hunhandle *hs = NULL;
+
+	hs = try_dictionary_in_dir(dir, tag);
+	if (hs != NULL)
+		return hs;
+
+	if (language != NULL
+	    && language[0] != '\0'
+	    && strcmp(language, tag) != 0)
+		return try_dictionary_in_dir(dir, language);
+
+	return NULL;
+}
+
 /*
  * Parse the locale string into a tag to pass to hunspell
  * (e.g. "en_US.UTF-8" -> "en_US")
  */
-static void parse_locale_to_tag(char *out, size_t out_size, const char *in) {
+static void parse_locale_to_tag(char *out, size_t out_size, const char *in)
+{
 	size_t i = 0;
 	size_t j = 0;
 	
 	/* Nothing to do */
-	if (out == NULL || out == 0 || in == NULL || *in == '\0')
+	if (out == NULL || out_size == 0)
+		return;
+	out[0] = '\0';
+	if (in == NULL || *in == '\0')
 		return;
 
 	for (i = 0; in[i] != '\0'; ++i) {
@@ -46,7 +96,7 @@ static void parse_locale_to_tag(char *out, size_t out_size, const char *in) {
 
 		if (in[i] == '.' || in[i] == '@')
 			break;
-		if (j + 1 > out_size)
+		if (j + 1 >= out_size)
 			break;
 
 		ch = in[i];
@@ -62,10 +112,16 @@ static void parse_locale_to_tag(char *out, size_t out_size, const char *in) {
 		out[0] = '\0';
 }
 
-static void language_from_tag(char *lang_out, size_t out_size, const char *tag) {
+static void language_from_tag(char *lang_out,
+			      size_t out_size,
+			      const char *tag)
+{
 	size_t i = 0;
 
-	if (lang_out == NULL || out_size == 0 || tag == NULL || *tag == '\0')
+	if (lang_out == NULL
+	    || out_size == 0
+	    || tag == NULL
+	    || *tag == '\0')
 		return;
 
 	while ((tag[i] != '\0') && (tag[i] != '_') && (i + 1 < out_size)) {
@@ -75,14 +131,20 @@ static void language_from_tag(char *lang_out, size_t out_size, const char *tag) 
 	lang_out[i] = '\0';
 }
 
-static Hunhandle *hunspell_init(const char *tag, const char *language) {
+static Hunhandle *hunspell_init(const char *tag, const char *language)
+{
 	Hunhandle *hs_handle_return = NULL;
-	char aff_path[MAX_PATH_LENGTH];
-	char dic_path[MAX_PATH_LENGTH];
 	char current_dic_dir[MAX_PATH_LENGTH];
 	const char *dic_paths = NULL;
+	static const char *const fallback_dic_dirs[] = {
+		"/usr/share/hunspell",
+		"/usr/local/share/hunspell",
+		"/opt/homebrew/share/hunspell",
+		"/usr/share/myspell",
+		"/usr/local/share/myspell",
+		NULL
+	};
 	size_t i = 0;
-	size_t j = 0;
 
 	if (tag == NULL
 	    || tag[0] == '\0'
@@ -92,51 +154,47 @@ static Hunhandle *hunspell_init(const char *tag, const char *language) {
 		return NULL;
 	}
 
-	/* Get the list of colon-separated paths from DICPATH in the sys env
-	 * TODO: Append additional directories to search.
-	 * */
+	/* Search DICPATH first when available */
 	dic_paths = getenv("DICPATH");
-	if (dic_paths == NULL || dic_paths[0] == '\0') {
-		perror("uemacs: DICPATH is not set in your evnironment.");
-		return NULL;
-	}
+		if (dic_paths != NULL && dic_paths[0] != '\0') {
+			const char *start = dic_paths;
 
-	/*
-	 * Keep searching until we find readable {tag}.aff and {tag}.dic files.
-	 * Only once accessable files are found do we attempt to call
-	 * Hunspell_create(). Until then the handle will remain NULL.
-	 */
-	while (hs_handle_return == NULL) {
-		char ch = '\0';
+			while (start != NULL && *start != '\0') {
+				const char *end = strchr(start, ':');
+				size_t dir_len = 0;
 
-		if (j > sizeof(current_dic_dir) - 1)
-			break;
+				if (end != NULL)
+					dir_len = (size_t)(end - start);
+				else
+					dir_len = strlen(start);
 
-		ch = dic_paths[i + j];
-		if (ch == '\0' || ch == ':') {
-			current_dic_dir[j] = '\0';
-			snprintf(aff_path, sizeof(aff_path), "%s/%s.aff",
-				 current_dic_dir, tag);
-			snprintf(dic_path, sizeof(dic_path), "%s/%s.dic",
-				 current_dic_dir, tag);
+				if (dir_len < sizeof(current_dic_dir)) {
+					memcpy(current_dic_dir, start, dir_len);
+					current_dic_dir[dir_len] = '\0';
+					hs_handle_return = try_dictionary_dir(current_dic_dir,
+									      tag,
+									      language);
+					if (hs_handle_return != NULL)
+						return hs_handle_return;
+				}
 
-			if (ch == '\0') /* End of directory list */
-				break;
-			current_dic_dir[j] = '\0';
-			i = j;
-			j = 0;
+				if (end == NULL)
+					break;
 
-			if (file_accessable(aff_path) == false
-			    || file_accessable(dic_path) == false)
-				continue;
-
-			hs_handle_return = Hunspell_create(aff_path, dic_path);
+				start = end + 1;
+			}
 		}
 
-		++j;
+	/* Then try common system paths */
+	for (i = 0; fallback_dic_dirs[i] != NULL; ++i) {
+		hs_handle_return = try_dictionary_dir(fallback_dic_dirs[i],
+						      tag,
+						      language);
+		if (hs_handle_return != NULL)
+			return hs_handle_return;
 	}
 
-	return hs_handle_return;
+	return NULL;
 }
 
 static void load_local_dictionary(const char *dic_path) {
