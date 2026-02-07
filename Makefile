@@ -56,7 +56,8 @@ DEPS := $(OBJS:.o=.d)
 # ---------- Build flags ----------
 UNAME_S   ?= $(shell uname -s)
 
-# Keep strict POSIX headers, but on FreeBSD this hides BSD extensions like SIGWINCH.
+# Keep strict POSIX headers.
+# On FreeBSD this hides BSD extensions like SIGWINCH.
 CPPFLAGS += -Iinclude -D_POSIX_C_SOURCE=200809L
 ifeq ($(UNAME_S),FreeBSD)
   CPPFLAGS += -D__BSD_VISIBLE=1
@@ -113,7 +114,7 @@ $(OBJ_DIR)/%.o: %.c
 	$(Q)mkdir -p $(@D)
 	$(Q)mkdir -p $(BUILD_DIR)
 	$(Q)touch $(CLEAN_STAMP)
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
 -include $(DEPS)
 

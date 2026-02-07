@@ -53,7 +53,6 @@ static const char *const spell_highlight_name[SPELL_HIGHLIGHT_STYLES] = {
 	"reverse"
 };
 
-#include <signal.h>
 #include <sys/ioctl.h>
 /* for window size changes */
 int chg_width, chg_height;

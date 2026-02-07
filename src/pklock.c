@@ -76,7 +76,7 @@ char *dolock(char *fname)
 
 		/* Write the owner tag to the lock file */
 		lseek(fd, 0, SEEK_SET);
-		if (write(fd, locker, strlen(locker)))
+		if (write(fd, locker, strlen(locker)) < 0)
 			perror("uemacs: ERROR: failed to write to lock file.");
 		close(fd);
 		return NULL;
