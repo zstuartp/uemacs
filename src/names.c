@@ -150,6 +150,7 @@ struct name_bind names[] = {
 	{ "store-procedure", storeproc },
 	{ "suspend-emacs", bktoshell },
 	{ "transpose-characters", twiddle },
+	{ "toggle-spell-highlight", togglespellhighlight },
 	{ "trim-line", trim },
 	{ "unbind-key", unbindkey },
 	{ "universal-argument", unarg },

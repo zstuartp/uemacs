@@ -39,6 +39,20 @@ struct video {
 static struct video **vscreen;			/* Virtual screen. */
 
 static int displaying = TRUE;
+enum spell_highlight_style {
+	SPELL_HIGHLIGHT_UNDERLINE = 0,
+	SPELL_HIGHLIGHT_BOLD,
+	SPELL_HIGHLIGHT_REVERSE,
+	SPELL_HIGHLIGHT_STYLES
+};
+
+static int spell_highlight_style = SPELL_HIGHLIGHT_REVERSE;
+static const char *const spell_highlight_name[SPELL_HIGHLIGHT_STYLES] = {
+	"underline",
+	"bold",
+	"reverse"
+};
+
 #include <signal.h>
 #include <sys/ioctl.h>
 /* for window size changes */
@@ -54,6 +68,8 @@ static void mlputi(int i, int r);
 static void mlputli(long l, int r);
 static void mlputf(int s);
 static int newscreensize(int h, int w);
+static const char *spell_highlight_start(void);
+static const char *spell_highlight_stop(void);
 
 /*
  * Initialize the data structures used by the display code. The edge vectors
@@ -569,7 +585,36 @@ static int find_not_letter(unicode_t *line, size_t len, int pos)
 #define BAD_WORD_BEGIN 1
 #define BAD_WORD_END 2
 
-static size_t findwords(unicode_t *line, size_t len, unsigned char *result, size_t size)
+static const char *spell_highlight_start(void)
+{
+	switch (spell_highlight_style) {
+	case SPELL_HIGHLIGHT_BOLD:
+		return "\033[1m";
+	case SPELL_HIGHLIGHT_REVERSE:
+		return "\033[7m";
+	case SPELL_HIGHLIGHT_UNDERLINE:
+	default:
+		return "\033[4m";
+	}
+}
+
+static const char *spell_highlight_stop(void)
+{
+	switch (spell_highlight_style) {
+	case SPELL_HIGHLIGHT_BOLD:
+		return "\033[22m";
+	case SPELL_HIGHLIGHT_REVERSE:
+		return "\033[27m";
+	case SPELL_HIGHLIGHT_UNDERLINE:
+	default:
+		return "\033[24m";
+	}
+}
+
+static size_t findwords(unicode_t *line,
+			size_t len,
+			unsigned char *result,
+			size_t size)
 {
 	int pos = 0;
 
@@ -633,6 +678,8 @@ static int updateline(int row, struct video *vp)
 	int maxchar = 0, analyzed = 0;
 	unsigned char array[256];
 	bool spellcheck = curwp->w_bufp->b_mode & MDSPELL;
+	const char *spellstart = spell_highlight_start();
+	const char *spellstop = spell_highlight_stop();
 
 	movecursor(row, 0);			/* Go to start of line. */
 
@@ -654,23 +701,20 @@ static int updateline(int row, struct video *vp)
 	if (spellcheck)
 		analyzed = findwords(vp->v_text, maxchar, array, sizeof(array));
 
-#define SPELLSTART "\033[1m"
-#define SPELLSTOP "\033[22m"
-
 	int started = 0;
 	for (int i = 0; i < maxchar; i++) {
 		if (i < analyzed && (array[i] & BAD_WORD_BEGIN)) {
 			started = 1;
-			TTputs(SPELLSTART);
+			TTputs(spellstart);
 		}
 		TTputc(vp->v_text[i]);
 		if (i < analyzed && (array[i] & BAD_WORD_END)) {
-			TTputs(SPELLSTOP);
+			TTputs(spellstop);
 			started = 0;
 		}
 	}
 	if (started)
-		TTputs(SPELLSTOP);
+		TTputs(spellstop);
 	ttcol = term.t_ncol;
 
 	TTeeol();
@@ -838,6 +882,29 @@ static void modeline(struct window *wp)
 void upmode(void)
 {						/* update all the mode lines */
 	curwp->w_flag |= WFMODE;
+}
+
+/*
+ * Cycle the spell highlighting style used for misspelled words.
+ * With an argument, select style directly:
+ *   0 = underline, 1 = bold, 2 = reverse.
+ */
+int togglespellhighlight(int f, int n)
+{
+	if (f == TRUE) {
+		if (n < 0)
+			n = -n;
+		spell_highlight_style = n % SPELL_HIGHLIGHT_STYLES;
+	} else {
+		++spell_highlight_style;
+		if (spell_highlight_style >= SPELL_HIGHLIGHT_STYLES)
+			spell_highlight_style = SPELL_HIGHLIGHT_UNDERLINE;
+	}
+
+	sgarbf = TRUE;
+	mlwrite("Spell highlight: %s",
+		spell_highlight_name[spell_highlight_style]);
+	return TRUE;
 }
 
 /*

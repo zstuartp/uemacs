@@ -124,6 +124,7 @@ extern void upddex(void);
 extern void updgar(void);
 extern int updupd(int force);
 extern void upmode(void);
+extern int togglespellhighlight(int f, int n);
 extern void movecursor(int row, int col);
 extern void mlerase(void);
 extern void mlwrite(const char *fmt, ...);

@@ -61,6 +61,7 @@ WRAP   :: Automatic carriage return     ^ $  Beginning and end of line
 VIEW   :: View only, don't change       .    Any character   \c   Character c
 CMODE  :: C program indenting           c*   Any number of character c
 EXACT  :: Match case in search          [ ]  Character class
+SPELL  :: Highlight misspelled words      Use Meta X to change marker style
 -------------------------------------------------------------------------------
 =>                      KEYS AND COMMANDS
 Bind to key ........... Meta  K         Help .................. Meta  ?
@@ -139,6 +140,7 @@ Universal argument ....      ^U         Set mark .............. Meta Space
 Clear and redraw ......      ^L         Exchange point and mark   ^X ^X
 Redraw display ........ Meta ^L
 Execute named command . Meta  X         Insert string ......... not bound  
+Toggle spell highlight . not bound   ::  via Meta X, toggle-spell-highlight
 Execute command line .. not bound       Overwrite string ...... not bound
 Set encryption key .... Meta  E         Wrap word ............. not bound
 Count words ........... Meta ^C         Update screen ......... not bound
