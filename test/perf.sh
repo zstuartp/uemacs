@@ -7,6 +7,7 @@ APP=${APP:-em}
 TARGET=${TARGET:-"$ROOT/build/bin/$APP"}
 PERF_OUT=${PERF_OUT:-}
 
+PERF_INCLUDE_CLI=${PERF_INCLUDE_CLI:-0}
 VERSION_ITERS=${VERSION_ITERS:-800}
 HELP_ITERS=${HELP_ITERS:-300}
 REF_ITERS=${REF_ITERS:-1000}
@@ -14,6 +15,8 @@ STARTUP_EMPTY_ITERS=${STARTUP_EMPTY_ITERS:-20}
 STARTUP_LOAD_ITERS=${STARTUP_LOAD_ITERS:-12}
 TYPE_ITERS=${TYPE_ITERS:-8}
 KEY_ITERS=${KEY_ITERS:-8}
+MAIN_ITERS=${MAIN_ITERS:-8}
+DISPATCH_ITERS=${DISPATCH_ITERS:-${MINI_ITERS:-8}}
 
 PERF_MIN_SECONDS=${PERF_MIN_SECONDS:-3}
 PERF_MAX_ITERS=${PERF_MAX_ITERS:-128000}
@@ -22,6 +25,8 @@ PERF_TERM=${PERF_TERM:-xterm}
 BENCH_FILE_LINES=${BENCH_FILE_LINES:-4096}
 TYPE_COMMANDS=${TYPE_COMMANDS:-400}
 KEY_COMMANDS=${KEY_COMMANDS:-600}
+MAIN_COMMANDS=${MAIN_COMMANDS:-600}
+DISPATCH_COMMANDS=${DISPATCH_COMMANDS:-${MINI_COMMANDS:-300}}
 PERF_INJECT_MODE=${PERF_INJECT_MODE:-none}
 PERF_INJECT_FACTOR=${PERF_INJECT_FACTOR:-1}
 
@@ -57,10 +62,13 @@ cmd_empty=$(mktemp_file) || exit 1
 cmd_load=$(mktemp_file) || exit 1
 cmd_type=$(mktemp_file) || exit 1
 cmd_key=$(mktemp_file) || exit 1
+cmd_main=$(mktemp_file) || exit 1
+cmd_dispatch=$(mktemp_file) || exit 1
 
 cleanup()
 {
 	rm -f "$bench_file" "$cmd_empty" "$cmd_load" "$cmd_type" "$cmd_key"
+	rm -f "$cmd_main" "$cmd_dispatch"
 }
 trap cleanup EXIT INT TERM
 
@@ -108,6 +116,36 @@ while [ "$i" -lt "$KEY_COMMANDS" ]; do
 done
 echo '0 exit-emacs' >>"$cmd_key"
 
+{
+	echo "find-file \"$bench_file\""
+	echo 'beginning-of-file'
+} >"$cmd_main"
+i=0
+while [ "$i" -lt "$MAIN_COMMANDS" ]; do
+	echo 'forward-character' >>"$cmd_main"
+	echo 'backward-character' >>"$cmd_main"
+	echo 'next-line' >>"$cmd_main"
+	echo 'previous-line' >>"$cmd_main"
+	echo 'end-of-line' >>"$cmd_main"
+	echo 'beginning-of-line' >>"$cmd_main"
+	i=$((i + 1))
+done
+echo '0 exit-emacs' >>"$cmd_main"
+
+{
+	echo "find-file \"$bench_file\""
+	echo 'beginning-of-file'
+} >"$cmd_dispatch"
+i=0
+while [ "$i" -lt "$DISPATCH_COMMANDS" ]; do
+	echo 'execute-named-command forward-character' >>"$cmd_dispatch"
+	echo 'execute-named-command backward-character' >>"$cmd_dispatch"
+	echo 'execute-named-command next-line' >>"$cmd_dispatch"
+	echo 'execute-named-command previous-line' >>"$cmd_dispatch"
+	i=$((i + 1))
+done
+echo '0 exit-emacs' >>"$cmd_dispatch"
+
 run_editor_script()
 {
 	cmdfile=$1
@@ -138,6 +176,12 @@ run_mode_once()
 		;;
 	key)
 		run_editor_script "$cmd_key"
+		;;
+	main)
+		run_editor_script "$cmd_main"
+		;;
+	dispatch)
+		run_editor_script "$cmd_dispatch"
 		;;
 	*)
 		echo "perf.sh: unknown mode '$mode'" >&2
@@ -238,15 +282,24 @@ measure_metric()
 		" $((sum_rate / PERF_TRIALS))"
 }
 
-set -- $(measure_metric version "$VERSION_ITERS")
-version_iters=$1
-version_seconds=$2
-version_ops_per_sec=$3
+if [ "$PERF_INCLUDE_CLI" = "1" ]; then
+	set -- $(measure_metric version "$VERSION_ITERS")
+	version_iters=$1
+	version_seconds=$2
+	version_ops_per_sec=$3
 
-set -- $(measure_metric help "$HELP_ITERS")
-help_iters=$1
-help_seconds=$2
-help_ops_per_sec=$3
+	set -- $(measure_metric help "$HELP_ITERS")
+	help_iters=$1
+	help_seconds=$2
+	help_ops_per_sec=$3
+else
+	version_iters=0
+	version_seconds=0
+	version_ops_per_sec=0
+	help_iters=0
+	help_seconds=0
+	help_ops_per_sec=0
+fi
 
 set -- $(measure_metric ref "$REF_ITERS")
 ref_iters=$1
@@ -273,6 +326,16 @@ key_iters=$1
 key_seconds=$2
 key_ops_per_sec=$3
 
+set -- $(measure_metric main "$MAIN_ITERS")
+main_iters=$1
+main_seconds=$2
+main_ops_per_sec=$3
+
+set -- $(measure_metric dispatch "$DISPATCH_ITERS")
+dispatch_iters=$1
+dispatch_seconds=$2
+dispatch_ops_per_sec=$3
+
 normalize_rate()
 {
 	rate=$1
@@ -293,6 +356,9 @@ startup_load_norm_permille=$(normalize_rate "$startup_load_ops_per_sec" \
 	"$ref_ops_per_sec")
 type_norm_permille=$(normalize_rate "$type_ops_per_sec" "$ref_ops_per_sec")
 key_norm_permille=$(normalize_rate "$key_ops_per_sec" "$ref_ops_per_sec")
+main_norm_permille=$(normalize_rate "$main_ops_per_sec" "$ref_ops_per_sec")
+dispatch_norm_permille=$(normalize_rate "$dispatch_ops_per_sec" \
+	"$ref_ops_per_sec")
 
 out_file=${PERF_OUT:-/dev/stdout}
 cat >"$out_file" <<EOF
@@ -321,10 +387,18 @@ type_ops_per_sec=$type_ops_per_sec
 key_iters=$key_iters
 key_seconds=$key_seconds
 key_ops_per_sec=$key_ops_per_sec
+main_iters=$main_iters
+main_seconds=$main_seconds
+main_ops_per_sec=$main_ops_per_sec
+dispatch_iters=$dispatch_iters
+dispatch_seconds=$dispatch_seconds
+dispatch_ops_per_sec=$dispatch_ops_per_sec
 version_norm_permille=$version_norm_permille
 help_norm_permille=$help_norm_permille
 startup_empty_norm_permille=$startup_empty_norm_permille
 startup_load_norm_permille=$startup_load_norm_permille
 type_norm_permille=$type_norm_permille
 key_norm_permille=$key_norm_permille
+main_norm_permille=$main_norm_permille
+dispatch_norm_permille=$dispatch_norm_permille
 EOF

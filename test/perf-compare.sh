@@ -8,7 +8,14 @@ TARGET=${TARGET:-"$ROOT/build/bin/$APP"}
 TEST_DIR=${TEST_DIR:-"$ROOT/test"}
 PERF_BASELINE=${PERF_BASELINE:-"$TEST_DIR/perf-baseline.txt"}
 PERF_REGRESS_PCT=${PERF_REGRESS_PCT:-20}
+PERF_WARN_PCT=${PERF_WARN_PCT:-10}
 PERF_FAIL_ON_CLI=${PERF_FAIL_ON_CLI:-0}
+if [ "$PERF_WARN_PCT" -ge "$PERF_REGRESS_PCT" ]; then
+	PERF_WARN_PCT=$((PERF_REGRESS_PCT - 1))
+fi
+if [ "$PERF_WARN_PCT" -lt 0 ]; then
+	PERF_WARN_PCT=0
+fi
 PERF_KEYS_EXPLICIT=0
 if [ "${PERF_KEYS+x}" = x ] && [ -n "$PERF_KEYS" ]; then
 	PERF_KEYS_EXPLICIT=1
@@ -17,7 +24,7 @@ PERF_KEYS=${PERF_KEYS:-}
 if [ -z "$PERF_KEYS" ]; then
 	PERF_KEYS="startup_empty_norm_permille startup_load_norm_permille"
 	PERF_KEYS="$PERF_KEYS type_norm_permille key_norm_permille"
-	PERF_KEYS="$PERF_KEYS version_norm_permille help_norm_permille"
+	PERF_KEYS="$PERF_KEYS main_norm_permille dispatch_norm_permille"
 fi
 
 if [ ! -f "$PERF_BASELINE" ]; then
@@ -80,12 +87,17 @@ compare_metric()
 		echo "$name: baseline <= 0, skipping threshold check"
 		return 0
 	fi
-	limit=$((base * (100 + PERF_REGRESS_PCT) / 100))
-	printf '%s: baseline=%s current=%s limit=%s\n' \
-		"$name" "$base" "$cur" "$limit"
-	if [ "$cur" -gt "$limit" ]; then
+	warn_limit=$((base * (100 + PERF_WARN_PCT) / 100))
+	fail_limit=$((base * (100 + PERF_REGRESS_PCT) / 100))
+	printf '%s: baseline=%s current=%s warn=%s fail=%s\n' \
+		"$name" "$base" "$cur" "$warn_limit" "$fail_limit"
+	if [ "$cur" -gt "$fail_limit" ]; then
 		echo "Regression in $name: over ${PERF_REGRESS_PCT}% threshold" >&2
 		return 1
+	fi
+	if [ "$cur" -gt "$warn_limit" ]; then
+		echo "Warning in $name: over ${PERF_WARN_PCT}% threshold" >&2
+		return 3
 	fi
 	return 0
 }
@@ -99,13 +111,19 @@ compare_rate()
 		echo "$name: baseline <= 0, skipping threshold check"
 		return 0
 	fi
-	min_rate=$((base * (100 - PERF_REGRESS_PCT) / 100))
-	printf '%s: baseline=%s current=%s minimum=%s\n' \
-		"$name" "$base" "$cur" "$min_rate"
-	if [ "$cur" -lt "$min_rate" ]; then
+	warn_min=$((base * (100 - PERF_WARN_PCT) / 100))
+	fail_min=$((base * (100 - PERF_REGRESS_PCT) / 100))
+	printf '%s: baseline=%s current=%s warn=%s fail=%s\n' \
+		"$name" "$base" "$cur" "$warn_min" "$fail_min"
+	if [ "$cur" -lt "$fail_min" ]; then
 		echo "Regression in $name: throughput dropped by over " \
 			"${PERF_REGRESS_PCT}%" >&2
 		return 1
+	fi
+	if [ "$cur" -lt "$warn_min" ]; then
+		echo "Warning in $name: throughput dropped by over " \
+			"${PERF_WARN_PCT}%" >&2
+		return 3
 	fi
 	return 0
 }
@@ -133,13 +151,23 @@ compare_optional_rate()
 	fi
 	case "$key" in
 	*_seconds)
-		if compare_metric "$key" "$base" "$cur"; then
+		rc=0
+		compare_metric "$key" "$base" "$cur" || rc=$?
+		if [ "$rc" -eq 0 ]; then
 			return 0
+		fi
+		if [ "$rc" -eq 3 ]; then
+			return 3
 		fi
 		;;
 	*)
-		if compare_rate "$key" "$base" "$cur"; then
+		rc=0
+		compare_rate "$key" "$base" "$cur" || rc=$?
+		if [ "$rc" -eq 0 ]; then
 			return 0
+		fi
+		if [ "$rc" -eq 3 ]; then
+			return 3
 		fi
 		;;
 	esac
@@ -149,6 +177,8 @@ compare_optional_rate()
 used_norm=0
 perf_fail=0
 cli_fail=0
+perf_warn=0
+cli_warn=0
 missing_keys=0
 for key in $PERF_KEYS; do
 	case "$key" in
@@ -157,20 +187,41 @@ for key in $PERF_KEYS; do
 		exit 1
 		;;
 	esac
+	rc=0
 	if compare_optional_rate "$key"; then
+		rc=0
+	else
+		rc=$?
+	fi
+	if [ "$rc" -eq 0 ]; then
 		used_norm=1
 		continue
-	elif [ "$?" -eq 2 ]; then
+	elif [ "$rc" -eq 2 ]; then
 		missing_keys=$((missing_keys + 1))
 		continue
 	fi
 	used_norm=1
+	is_warn=0
+	if [ "$rc" -eq 3 ]; then
+		is_warn=1
+	elif [ "$rc" -ne 1 ]; then
+		echo "perf-compare: unexpected status ($rc) for '$key'" >&2
+		exit 1
+	fi
 	case "$key" in
-	startup_*|type_*|key_*)
-		perf_fail=$((perf_fail + 1))
+	startup_*|type_*|key_*|main_*|dispatch_*)
+		if [ "$is_warn" -eq 1 ]; then
+			perf_warn=$((perf_warn + 1))
+		else
+			perf_fail=$((perf_fail + 1))
+		fi
 		;;
 	*)
-		cli_fail=$((cli_fail + 1))
+		if [ "$is_warn" -eq 1 ]; then
+			cli_warn=$((cli_warn + 1))
+		else
+			cli_fail=$((cli_fail + 1))
+		fi
 		;;
 	esac
 done
@@ -192,7 +243,15 @@ if [ "$perf_fail" -gt 0 ]; then
 	exit 1
 fi
 
+if [ "$perf_warn" -gt 0 ]; then
+	echo "perf-compare: interactive warning count=$perf_warn" >&2
+fi
+
 if [ "$PERF_FAIL_ON_CLI" = "1" ] && [ "$cli_fail" -gt 0 ]; then
 	echo "perf-compare: CLI regression count=$cli_fail" >&2
 	exit 1
+fi
+
+if [ "$cli_warn" -gt 0 ]; then
+	echo "perf-compare: CLI warning count=$cli_warn" >&2
 fi

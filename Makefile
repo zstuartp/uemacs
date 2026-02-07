@@ -38,6 +38,7 @@ PERF_SCRIPT ?= $(TEST_DIR)/perf.sh
 PERF_COMPARE ?= $(TEST_DIR)/perf-compare.sh
 PERF_RECORD ?= $(TEST_DIR)/perf-record.sh
 PERF_SELFCHECK ?= $(TEST_DIR)/perf-selfcheck.sh
+PERF_AB ?= $(TEST_DIR)/perf-ab.sh
 PERF_BASELINE ?= $(TEST_DIR)/perf-baseline.txt
 PERF_CURRENT ?= $(BUILD_DIR)/perf-current.txt
 PERF_HISTORY ?= $(TEST_DIR)/perf-history.csv
@@ -107,7 +108,8 @@ endif
 
 # ---------- Targets ----------
 .PHONY: all clean install install-user uninstall uninstall-user run
-.PHONY: test test-perf perf-baseline perf-compare perf-record perf-selfcheck
+.PHONY: test test-perf perf-mini perf-baseline perf-compare perf-record
+.PHONY: perf-selfcheck perf-ab
 .PHONY: print-vars
 all: $(TARGET)
 
@@ -140,7 +142,8 @@ clean:
 			echo "Refusing to clean unsafe BUILD_DIR='$$dir'"; exit 1 ;; \
 	esac; \
 	if [ ! -f "$(CLEAN_STAMP)" ]; then \
-		echo "Refusing to clean: missing stamp '$(CLEAN_STAMP)' (not created by this Makefile?)"; \
+		echo "Refusing to clean: missing stamp '$(CLEAN_STAMP)'."; \
+		echo "Not created by this Makefile?"; \
 		echo "If you're sure, run: make clean FORCE=1"; \
 		if [ "$${FORCE:-0}" != "1" ]; then exit 1; fi; \
 	fi; \
@@ -230,6 +233,17 @@ test-perf: $(TARGET)
 		PERF_OUT="$(PERF_CURRENT)" sh "$(PERF_SCRIPT)"
 	$(Q)cat "$(PERF_CURRENT)"
 
+perf-mini: $(TARGET)
+	$(call log,PERF,$(PERF_SCRIPT))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_OUT="$(PERF_CURRENT)" PERF_INCLUDE_CLI=0 \
+		PERF_TRIALS=1 PERF_MIN_SECONDS=1 PERF_MAX_ITERS=4096 \
+		STARTUP_EMPTY_ITERS=2 STARTUP_LOAD_ITERS=2 \
+		TYPE_ITERS=4 KEY_ITERS=4 MAIN_ITERS=6 DISPATCH_ITERS=10 \
+		MAIN_COMMANDS=200 DISPATCH_COMMANDS=120 \
+		sh "$(PERF_SCRIPT)"
+	$(Q)cat "$(PERF_CURRENT)"
+
 perf-baseline: $(TARGET)
 	$(call log,PERF,$(PERF_BASELINE))
 	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
@@ -250,6 +264,11 @@ perf-selfcheck: $(TARGET)
 	$(call log,PERF,$(PERF_SELFCHECK))
 	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
 		PERF_BASELINE="$(PERF_BASELINE)" sh "$(PERF_SELFCHECK)"
+
+perf-ab: $(TARGET)
+	$(call log,PERF,$(PERF_AB))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		sh "$(PERF_AB)"
 
 print-vars:
 	@echo "APP=$(APP)"
