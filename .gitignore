@@ -5,3 +5,5 @@
 em
 *.o
 build/
+test/perf-baseline.txt
+test/perf-history.csv

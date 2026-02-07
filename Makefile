@@ -32,6 +32,16 @@ CLEAN_STAMP := $(BUILD_DIR)/.make-created
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 DESTDIR   ?=
+TEST_DIR  ?= test
+TEST_RUNNER ?= $(TEST_DIR)/run.sh
+PERF_SCRIPT ?= $(TEST_DIR)/perf.sh
+PERF_COMPARE ?= $(TEST_DIR)/perf-compare.sh
+PERF_RECORD ?= $(TEST_DIR)/perf-record.sh
+PERF_SELFCHECK ?= $(TEST_DIR)/perf-selfcheck.sh
+PERF_BASELINE ?= $(TEST_DIR)/perf-baseline.txt
+PERF_CURRENT ?= $(BUILD_DIR)/perf-current.txt
+PERF_HISTORY ?= $(TEST_DIR)/perf-history.csv
+MAKE_CMD_FOR_TEST := $(MAKE)
 
 # ---------- Pretty output / verbosity ----------
 V ?= 0
@@ -96,7 +106,9 @@ else
 endif
 
 # ---------- Targets ----------
-.PHONY: all clean install install-user uninstall uninstall-user run print-vars
+.PHONY: all clean install install-user uninstall uninstall-user run
+.PHONY: test test-perf perf-baseline perf-compare perf-record perf-selfcheck
+.PHONY: print-vars
 all: $(TARGET)
 
 $(TARGET): $(OBJS) | $(BIN_DIR)
@@ -207,6 +219,38 @@ uninstall-user:
 run: $(TARGET)
 	$(Q)./$(TARGET)
 
+test: $(TARGET)
+	$(call log,TEST,$(TEST_RUNNER))
+	$(Q)ROOT="$(CURDIR)" MAKE_CMD="$(MAKE_CMD_FOR_TEST)" APP="$(APP)" \
+		TARGET="$(CURDIR)/$(TARGET)" sh "$(TEST_RUNNER)"
+
+test-perf: $(TARGET)
+	$(call log,PERF,$(PERF_SCRIPT))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_OUT="$(PERF_CURRENT)" sh "$(PERF_SCRIPT)"
+	$(Q)cat "$(PERF_CURRENT)"
+
+perf-baseline: $(TARGET)
+	$(call log,PERF,$(PERF_BASELINE))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_OUT="$(PERF_BASELINE)" sh "$(PERF_SCRIPT)"
+	$(Q)echo "Wrote baseline: $(PERF_BASELINE)"
+
+perf-compare: $(TARGET)
+	$(call log,PERF,$(PERF_COMPARE))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_BASELINE="$(PERF_BASELINE)" sh "$(PERF_COMPARE)"
+
+perf-record: $(TARGET)
+	$(call log,PERF,$(PERF_RECORD))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_HISTORY="$(PERF_HISTORY)" sh "$(PERF_RECORD)"
+
+perf-selfcheck: $(TARGET)
+	$(call log,PERF,$(PERF_SELFCHECK))
+	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+		PERF_BASELINE="$(PERF_BASELINE)" sh "$(PERF_SELFCHECK)"
+
 print-vars:
 	@echo "APP=$(APP)"
 	@echo "SRCS=$(SRCS)"
@@ -216,3 +260,6 @@ print-vars:
 	@echo "PREFIX=$(PREFIX)"
 	@echo "BINDIR=$(BINDIR)"
 	@echo "DESTDIR=$(DESTDIR)"
+	@echo "TEST_DIR=$(TEST_DIR)"
+	@echo "PERF_BASELINE=$(PERF_BASELINE)"
+	@echo "PERF_HISTORY=$(PERF_HISTORY)"
