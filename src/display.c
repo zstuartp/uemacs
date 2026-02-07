@@ -66,6 +66,10 @@ static void modeline(struct window *wp);
 static void mlputi(int i, int r);
 static void mlputli(long l, int r);
 static void mlputf(int s);
+static void append_text(char *dst,
+			size_t dsize,
+			size_t *used,
+			const char *src);
 static int newscreensize(int h, int w);
 static const char *spell_highlight_start(void);
 static const char *spell_highlight_stop(void);
@@ -725,6 +729,24 @@ static int updateline(int row, struct video *vp)
 	return TRUE;
 }
 
+static void append_text(char *dst,
+			size_t dsize,
+			size_t *used,
+			const char *src)
+{
+	int wrote;
+
+	if (*used >= dsize)
+		return;
+	wrote = snprintf(dst + *used, dsize - *used, "%s", src);
+	if (wrote < 0)
+		return;
+	if ((size_t)wrote >= dsize - *used)
+		*used = dsize - 1;
+	else
+		*used += (size_t)wrote;
+}
+
 /*
  * Redisplay the mode line for the window pointed to by the "wp". This is the
  * only routine that has any idea of how the modeline is formatted. You can
@@ -740,6 +762,7 @@ static void modeline(struct window *wp)
 	int i;					/* loop index */
 	int lchar;				/* character to draw line in buffer with */
 	int firstm;				/* is this the first mode? */
+	size_t used;				/* used bytes in tline */
 	char tline[NLINE];			/* buffer for part of mode line */
 
 	n = term.t_nrow - 1;			/* Location. */
@@ -762,11 +785,8 @@ static void modeline(struct window *wp)
 
 	n = 2;
 
-	strcpy(tline, " ");
-	strcat(tline, PROGRAM_NAME_LONG);
-	strcat(tline, " ");
-	strcat(tline, VERSION);
-	strcat(tline, ": ");
+	(void)snprintf(tline, sizeof(tline), " %s %s: ",
+		       PROGRAM_NAME_LONG, VERSION);
 	cp = &tline[0];
 	while ((c = *cp++) != 0) {
 		vtputc(c);
@@ -779,23 +799,24 @@ static void modeline(struct window *wp)
 		++n;
 	}
 
-	strcpy(tline, " (");
+	used = 0;
+	append_text(tline, sizeof(tline), &used, " (");
 
 	/* display the modes */
 
 	firstm = TRUE;
 	if ((bp->b_flag & BFTRUNC) != 0) {
 		firstm = FALSE;
-		strcat(tline, "Truncated");
+		append_text(tline, sizeof(tline), &used, "Truncated");
 	}
 	for (i = 0; i < NUMMODES; i++)		/* add in the mode flags */
 		if (wp->w_bufp->b_mode & (1 << i)) {
 			if (firstm != TRUE)
-				strcat(tline, " ");
+				append_text(tline, sizeof(tline), &used, " ");
 			firstm = FALSE;
-			strcat(tline, mode2name[i]);
+			append_text(tline, sizeof(tline), &used, mode2name[i]);
 		}
-	strcat(tline, ") ");
+	append_text(tline, sizeof(tline), &used, ") ");
 
 	cp = &tline[0];
 	while ((c = *cp++) != 0) {
