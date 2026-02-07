@@ -11,15 +11,42 @@ make
 
 ## Install
 
+User install (recommended, no sudo):
+
 ```sh
-make
+make install-user
+```
+
+System install:
+
+```sh
 make install
 ```
 
-Install to a user prefix (no root):
+Custom prefix:
 
 ```sh
-make install PREFIX="$HOME/.local"
+make install PREFIX="/path/to/prefix"
+```
+
+## Uninstall
+
+User uninstall:
+
+```sh
+make uninstall-user
+```
+
+System uninstall:
+
+```sh
+make uninstall
+```
+
+Custom prefix:
+
+```sh
+make uninstall PREFIX="/path/to/prefix"
 ```
 
 ## Status

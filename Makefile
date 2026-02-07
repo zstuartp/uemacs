@@ -2,6 +2,27 @@
 APP       ?= em
 CC        ?= cc
 
+# Ignore ambient APP from shell environment. Use APP=... on the
+# make command line for intentional overrides.
+ifeq ($(origin APP), environment)
+APP       := em
+endif
+ifeq ($(origin APP), environment override)
+APP       := em
+endif
+ifneq ($(findstring /,$(APP)),)
+$(error APP must not contain '/': $(APP))
+endif
+ifneq ($(words $(APP)),1)
+$(error APP must not contain whitespace: $(APP))
+endif
+ifeq ($(strip $(APP)),)
+$(error APP must not be empty)
+endif
+ifneq ($(filter . ..,$(APP)),)
+$(error APP must not be '.' or '..': $(APP))
+endif
+
 SRC_DIRS  ?= src
 BUILD_DIR ?= build
 OBJ_DIR   := $(BUILD_DIR)/obj
@@ -11,7 +32,6 @@ CLEAN_STAMP := $(BUILD_DIR)/.make-created
 PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 DESTDIR   ?=
-INSTALL   ?= install
 
 # ---------- Pretty output / verbosity ----------
 V ?= 0
@@ -52,6 +72,7 @@ endif
 
 # ---------- ncurses + hunspell discovery ----------
 PKG_CONFIG ?= pkg-config
+HUNSPELL_LIB ?= hunspell
 
 PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags hunspell ncursesw 2>/dev/null \
 	|| $(PKG_CONFIG) --cflags hunspell ncurses 2>/dev/null)
@@ -67,14 +88,14 @@ endif
 ifeq ($(strip $(PKG_CFLAGS)),)
   CPPFLAGS += $(BREW_CPPFLAGS)
   LDFLAGS  += $(BREW_LDFLAGS)
-  LDLIBS   += -lhunspell-1.7 -lncurses
+  LDLIBS   += -l$(HUNSPELL_LIB) -lncurses
 else
   CPPFLAGS += $(PKG_CFLAGS)
   LDLIBS   += $(PKG_LIBS)
 endif
 
 # ---------- Targets ----------
-.PHONY: all clean install uninstall run print-vars
+.PHONY: all clean install install-user uninstall uninstall-user run print-vars
 all: $(TARGET)
 
 $(TARGET): $(OBJS) | $(BIN_DIR)
@@ -114,17 +135,79 @@ clean:
 
 install: $(TARGET)
 	$(call log,INSTALL,$(DESTDIR)$(BINDIR)/$(APP))
-	$(Q)mkdir -p "$(DESTDIR)$(BINDIR)"
-	$(Q)$(INSTALL) -m 0755 "$(TARGET)" "$(DESTDIR)$(BINDIR)/$(APP)"
+	$(Q)set -eu; \
+	dest="$(DESTDIR)$(BINDIR)"; \
+	file="$$dest/$(APP)"; \
+	if ! mkdir -p "$$dest"; then \
+		echo "Install failed: cannot create '$$dest'."; \
+		echo "Try: make install PREFIX=\"$${HOME:-/path/to/home}/.local\""; \
+		echo "Or run with elevated permissions."; \
+		exit 1; \
+	fi; \
+	if [ ! -w "$$dest" ]; then \
+		echo "Install failed: '$$dest' is not writable."; \
+		echo "Try: make install PREFIX=\"$${HOME:-/path/to/home}/.local\""; \
+		echo "Or run with elevated permissions."; \
+		exit 1; \
+	fi; \
+	if ! install -m 0755 "$(TARGET)" "$$file"; then \
+		echo "Install failed: cannot install to '$$file'."; \
+		echo "Try: make install PREFIX=\"$${HOME:-/path/to/home}/.local\""; \
+		echo "Or run with elevated permissions."; \
+		exit 1; \
+	fi
+
+install-user: $(TARGET)
+	$(Q)set -eu; \
+	if [ -z "$${HOME:-}" ]; then \
+		echo "Install failed: HOME is not set."; \
+		echo "Try: make install PREFIX=\"/path/to/prefix\""; \
+		exit 1; \
+	fi; \
+	$(MAKE) --no-print-directory install PREFIX="$$HOME/.local"; \
+	echo "Installed to $$HOME/.local/bin/$(APP)."; \
+	echo "If needed, add '$$HOME/.local/bin' to PATH."
 
 uninstall:
 	$(call log,RM,$(DESTDIR)$(BINDIR)/$(APP))
-	$(Q)rm -f "$(DESTDIR)$(BINDIR)/$(APP)"
+	$(Q)set -eu; \
+	dest="$(DESTDIR)$(BINDIR)"; \
+	file="$$dest/$(APP)"; \
+	case "$$dest" in \
+		""|"/"|"//"|"///"*|"~"|"."|".."|"../"*|"/Users"|"/home"|"/root") \
+			echo "Refusing unsafe uninstall directory '$$dest'."; \
+			exit 1 ;; \
+	esac; \
+	case "$$file" in \
+		""|"/"|"//"|"///"*|"~"|"."|"..") \
+			echo "Refusing unsafe uninstall path '$$file'."; \
+			exit 1 ;; \
+	esac; \
+	if [ -d "$$file" ]; then \
+		echo "Refusing to uninstall directory '$$file'."; \
+		exit 1; \
+	fi; \
+	if [ ! -e "$$file" ] && [ ! -L "$$file" ]; then \
+		echo "Nothing to uninstall at '$$file'."; \
+		exit 0; \
+	fi; \
+	rm -f -- "$$file"; \
+	echo "Uninstalled '$$file'."
+
+uninstall-user:
+	$(Q)set -eu; \
+	if [ -z "$${HOME:-}" ]; then \
+		echo "Uninstall failed: HOME is not set."; \
+		echo "Try: make uninstall PREFIX=\"/path/to/prefix\""; \
+		exit 1; \
+	fi; \
+	$(MAKE) --no-print-directory uninstall PREFIX="$$HOME/.local"
 
 run: $(TARGET)
 	$(Q)./$(TARGET)
 
 print-vars:
+	@echo "APP=$(APP)"
 	@echo "SRCS=$(SRCS)"
 	@echo "PKG_CFLAGS=$(PKG_CFLAGS)"
 	@echo "PKG_LIBS=$(PKG_LIBS)"
