@@ -233,20 +233,21 @@ int readin(char *fname, int lockfl)
 		++nline;
 	}
 	ffclose();				/* Ignore errors.       */
-	strcpy(mesg, "(");
 	if (s == FIOERR) {
-		strcat(mesg, "I/O ERROR, ");
 		curbp->b_flag |= BFTRUNC;
-	}
-	if (s == FIOMEM) {
-		strcat(mesg, "OUT OF MEMORY, ");
+		(void)snprintf(mesg, sizeof(mesg),
+			       "(I/O ERROR, Read %d line%s)",
+			       nline, (nline != 1) ? "s" : "");
+	} else if (s == FIOMEM) {
 		curbp->b_flag |= BFTRUNC;
+		(void)snprintf(mesg, sizeof(mesg),
+			       "(OUT OF MEMORY, Read %d line%s)",
+			       nline, (nline != 1) ? "s" : "");
+	} else {
+		(void)snprintf(mesg, sizeof(mesg), "(Read %d line%s)",
+			       nline, (nline != 1) ? "s" : "");
 	}
-	sprintf(&mesg[strlen(mesg)], "Read %d line", nline);
-	if (nline != 1)
-		strcat(mesg, "s");
-	strcat(mesg, ")");
-	mlwrite(mesg);
+	mlwrite("%s", mesg);
 
  out:
 	wp = curwp;
@@ -508,20 +509,21 @@ int ifile(char *fname)
 	}
 	ffclose();				/* Ignore errors.       */
 	curwp->w_markp = lforw(curwp->w_markp);
-	strcpy(mesg, "(");
 	if (s == FIOERR) {
-		strcat(mesg, "I/O ERROR, ");
 		curbp->b_flag |= BFTRUNC;
-	}
-	if (s == FIOMEM) {
-		strcat(mesg, "OUT OF MEMORY, ");
+		(void)snprintf(mesg, sizeof(mesg),
+			       "(I/O ERROR, Inserted %d line%s)",
+			       nline, (nline > 1) ? "s" : "");
+	} else if (s == FIOMEM) {
 		curbp->b_flag |= BFTRUNC;
+		(void)snprintf(mesg, sizeof(mesg),
+			       "(OUT OF MEMORY, Inserted %d line%s)",
+			       nline, (nline > 1) ? "s" : "");
+	} else {
+		(void)snprintf(mesg, sizeof(mesg), "(Inserted %d line%s)",
+			       nline, (nline > 1) ? "s" : "");
 	}
-	sprintf(&mesg[strlen(mesg)], "Inserted %d line", nline);
-	if (nline > 1)
-		strcat(mesg, "s");
-	strcat(mesg, ")");
-	mlwrite(mesg);
+	mlwrite("%s", mesg);
 
  out:
 	/* advance to the next line and mark the window for changes */
