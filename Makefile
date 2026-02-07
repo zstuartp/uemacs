@@ -8,6 +8,10 @@ OBJ_DIR   := $(BUILD_DIR)/obj
 BIN_DIR   := $(BUILD_DIR)/bin
 TARGET    := $(BIN_DIR)/$(APP)
 CLEAN_STAMP := $(BUILD_DIR)/.make-created
+PREFIX    ?= /usr/local
+BINDIR    ?= $(PREFIX)/bin
+DESTDIR   ?=
+INSTALL   ?= install
 
 # ---------- Pretty output / verbosity ----------
 V ?= 0
@@ -70,7 +74,7 @@ else
 endif
 
 # ---------- Targets ----------
-.PHONY: all clean run print-vars
+.PHONY: all clean install uninstall run print-vars
 all: $(TARGET)
 
 $(TARGET): $(OBJS) | $(BIN_DIR)
@@ -108,6 +112,15 @@ clean:
 	fi; \
 	rm -rf -- "$$dir"
 
+install: $(TARGET)
+	$(call log,INSTALL,$(DESTDIR)$(BINDIR)/$(APP))
+	$(Q)mkdir -p "$(DESTDIR)$(BINDIR)"
+	$(Q)$(INSTALL) -m 0755 "$(TARGET)" "$(DESTDIR)$(BINDIR)/$(APP)"
+
+uninstall:
+	$(call log,RM,$(DESTDIR)$(BINDIR)/$(APP))
+	$(Q)rm -f "$(DESTDIR)$(BINDIR)/$(APP)"
+
 run: $(TARGET)
 	$(Q)./$(TARGET)
 
@@ -116,4 +129,6 @@ print-vars:
 	@echo "PKG_CFLAGS=$(PKG_CFLAGS)"
 	@echo "PKG_LIBS=$(PKG_LIBS)"
 	@echo "HOMEBREW_PREFIX=$(HOMEBREW_PREFIX)"
-
+	@echo "PREFIX=$(PREFIX)"
+	@echo "BINDIR=$(BINDIR)"
+	@echo "DESTDIR=$(DESTDIR)"
