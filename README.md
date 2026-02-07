@@ -2,10 +2,13 @@
 
 A fork of uEmacs with a focus on improving portability and stability.
 
-## Build
+## Build and Run
 
 ```sh
+# Build the editor
 make
+
+# Run uEmacs
 ./build/bin/em
 ```
 
