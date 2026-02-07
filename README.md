@@ -52,7 +52,7 @@ Custom prefix:
 make uninstall PREFIX="/path/to/prefix"
 ```
 
-## Status
+## CI Results
 
 | Platform | `master` | `testing` |
 |---|---|---|
@@ -60,6 +60,8 @@ make uninstall PREFIX="/path/to/prefix"
 | macOS | ![macOS master][m-macos] | ![macOS testing][t-macos] |
 | FreeBSD | ![FreeBSD master][m-freebsd] | ![FreeBSD testing][t-freebsd] |
 | Cygwin/Windows | ![Windows master][m-win] | ![Windows testing][t-win] |
+
+[Actions workflow](https://github.com/zstuartp/uemacs/actions/workflows/c-cpp.yml)
 
 [m-linux]: https://img.shields.io/github/check-runs/zstuartp/uemacs/master?nameFilter=Linux&label=Linux&logo=github&style=flat-square
 [t-linux]: https://img.shields.io/github/check-runs/zstuartp/uemacs/testing?nameFilter=Linux&label=Linux&logo=github&style=flat-square
