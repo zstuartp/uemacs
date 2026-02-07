@@ -22,6 +22,42 @@ jobs:
         run: |
           set -eux
           make
+      - name: Test
+        run: |
+          set -eux
+          make test
+      - name: Perf Snapshot (Linux)
+        run: |
+          set -eux
+          VERSION_ITERS=100 \
+          HELP_ITERS=60 \
+          REF_ITERS=120 \
+          STARTUP_EMPTY_ITERS=4 \
+          STARTUP_LOAD_ITERS=3 \
+          TYPE_ITERS=3 \
+          KEY_ITERS=3 \
+          PERF_TRIALS=1 \
+          PERF_MIN_SECONDS=1 \
+          PERF_MAX_ITERS=1024 \
+          BENCH_FILE_LINES=512 \
+          TYPE_COMMANDS=64 \
+          KEY_COMMANDS=64 \
+          make test-perf
+      - name: Perf Summary (Linux)
+        run: |
+          set -eu
+          {
+            echo "### Linux Perf Snapshot"
+            echo
+            echo '```'
+            cat build/perf-current.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Perf Artifact (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-linux-${{ github.run_id }}
+          path: build/perf-current.txt
 
   build-macos:
     name: macOS
@@ -39,6 +75,10 @@ jobs:
         run: |
           set -eux
           make
+      - name: Test
+        run: |
+          set -eux
+          make test
 
   build-freebsd:
     name: FreeBSD (VM)
@@ -57,6 +97,7 @@ jobs:
           run: |
             set -eux
             gmake
+            gmake test
 
   build-windows-cygwin:
     name: Windows (Cygwin POSIX)
@@ -82,3 +123,8 @@ jobs:
         run: |
           $bash = "${{ steps.cygwin.outputs.root }}\bin\bash.exe"
           & $bash -lc 'set -eux; cd "$(cygpath -u "$GITHUB_WORKSPACE")"; make'
+      - name: Test
+        shell: pwsh
+        run: |
+          $bash = "${{ steps.cygwin.outputs.root }}\bin\bash.exe"
+          & $bash -lc 'set -eux; cd "$(cygpath -u "$GITHUB_WORKSPACE")"; make test'
