@@ -377,15 +377,24 @@ int match_pat(char *patrn)
 int promptpattern(char *prompt)
 {
 	char tpat[NPAT + 20];
+	size_t used;
 
-	strcpy(tpat, prompt);			/* copy prompt to output string */
-	strcat(tpat, " (");			/* build new prompt string */
-	expandp(pat, &tpat[strlen(tpat)], NPAT / 2);	/* add old pattern */
-	strcat(tpat, ")<Meta>: ");
+	/* copy prompt and start prompt suffix */
+	(void)snprintf(tpat, sizeof(tpat), "%s (", prompt);
+
+	/* add old pattern using remaining room */
+	used = strlen(tpat);
+	if (used < sizeof(tpat))
+		expandp(pat, tpat + used, (int)(sizeof(tpat) - used));
+
+	/* append prompt trailer */
+	used = strlen(tpat);
+	if (used < sizeof(tpat))
+		(void)snprintf(tpat + used, sizeof(tpat) - used, ")<Meta>: ");
 
 	/* check to see if we are executing a command line */
 	if (!clexec) {
-		mlwrite(tpat);
+		mlwrite("%s", tpat);
 	}
 	return strlen(tpat);
 }

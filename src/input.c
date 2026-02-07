@@ -26,9 +26,8 @@ int mlyesno(char *prompt)
 
 	for (;;) {
 		/* build and prompt the user */
-		strcpy(buf, prompt);
-		strcat(buf, " (y/n)? ");
-		mlwrite(buf);
+		(void)snprintf(buf, sizeof(buf), "%s (y/n)? ", prompt);
+		mlwrite("%s", buf);
 
 		/* get the responce */
 		c = tgetc();

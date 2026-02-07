@@ -588,11 +588,20 @@ static int readpattern(char *prompt, char *apat, int srch)
 {
 	int status;
 	char tpat[NPAT + 20];
+	size_t used;
 
-	strcpy(tpat, prompt);			/* copy prompt to output string */
-	strcat(tpat, " (");			/* build new prompt string */
-	expandp(&apat[0], &tpat[strlen(tpat)], NPAT / 2);	/* add old pattern */
-	strcat(tpat, ")<Meta>: ");
+	/* copy prompt and start prompt suffix */
+	(void)snprintf(tpat, sizeof(tpat), "%s (", prompt);
+
+	/* add old pattern using remaining room */
+	used = strlen(tpat);
+	if (used < sizeof(tpat))
+		expandp(&apat[0], tpat + used, (int)(sizeof(tpat) - used));
+
+	/* append prompt trailer */
+	used = strlen(tpat);
+	if (used < sizeof(tpat))
+		(void)snprintf(tpat + used, sizeof(tpat) - used, ")<Meta>: ");
 
 	/* Read a pattern.  Either we get one,
 	 * or we just get the META charater, and use the previous pattern.
@@ -742,13 +751,23 @@ static int replaces(int kind, int f, int n)
 	nlrepl = FALSE;
 
 	if (kind) {
+		size_t used;
+
 		/* Build query replace question string.
 		 */
-		strcpy(tpat, "Replace '");
-		expandp(&pat[0], &tpat[strlen(tpat)], NPAT / 3);
-		strcat(tpat, "' with '");
-		expandp(&rpat[0], &tpat[strlen(tpat)], NPAT / 3);
-		strcat(tpat, "'? ");
+		(void)snprintf(tpat, sizeof(tpat), "Replace '");
+		used = strlen(tpat);
+		if (used < sizeof(tpat))
+			expandp(&pat[0], tpat + used, (int)(sizeof(tpat) - used));
+		used = strlen(tpat);
+		if (used < sizeof(tpat))
+			(void)snprintf(tpat + used, sizeof(tpat) - used, "' with '");
+		used = strlen(tpat);
+		if (used < sizeof(tpat))
+			expandp(&rpat[0], tpat + used, (int)(sizeof(tpat) - used));
+		used = strlen(tpat);
+		if (used < sizeof(tpat))
+			(void)snprintf(tpat + used, sizeof(tpat) - used, "'? ");
 
 		/* Initialize last replaced pointers.
 		 */
