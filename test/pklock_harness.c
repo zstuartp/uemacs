@@ -3,10 +3,11 @@
 
 char *dolock(char *fname);
 char *undolock(char *fname);
+int is_lock_error(const char *msg);
 
 static int lock_status(const char *msg)
 {
-	if (strncmp(msg, "LOCK", 4) == 0)
+	if (is_lock_error(msg))
 		return 3;
 	return 2;
 }

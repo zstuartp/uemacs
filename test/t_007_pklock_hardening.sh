@@ -2,7 +2,49 @@
 
 set -eu
 
-. "$TEST_DIR/lib.sh"
+if [ -f "$TEST_DIR/lib.sh" ]; then
+	. "$TEST_DIR/lib.sh"
+else
+	die()
+	{
+		printf 'FAIL: %s\n' "$*" >&2
+		exit 1
+	}
+
+	require_cmd()
+	{
+		command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+	}
+
+	assert_grep()
+	{
+		pat=$1
+		file=$2
+		grep -q -- "$pat" "$file" || die "pattern '$pat' not found in $file"
+	}
+
+	mkdtemp_compat()
+	{
+		base=${TMPDIR:-/tmp}
+		if command -v mktemp >/dev/null 2>&1; then
+			d=$(mktemp -d "$base/uemacs-test.XXXXXX" 2>/dev/null || true)
+			if [ -n "$d" ]; then
+				printf '%s\n' "$d"
+				return 0
+			fi
+		fi
+		i=0
+		while [ "$i" -lt 100 ]; do
+			i=$((i + 1))
+			d="$base/uemacs-test.$$.$(date +%s).$i"
+			if mkdir "$d" 2>/dev/null; then
+				printf '%s\n' "$d"
+				return 0
+			fi
+		done
+		return 1
+	}
+fi
 
 tmp=$(mkdtemp_compat) || die "failed to create temp directory"
 trap 'rm -rf "$tmp"' EXIT INT TERM
@@ -40,6 +82,20 @@ assert_grep "@" "$second_lock"
 unlock_out="$tmp/unlock.out"
 "$harness" unlock "$target" >"$unlock_out" 2>&1 || die "unlock failed"
 assert_grep "^OK$" "$unlock_out"
+
+: >"$target.lock~"
+printf '%s\n' "LOCKED_BY_USER" >"$target.lock~"
+owner_lock_out="$tmp/owner-lock.out"
+set +e
+"$harness" lock "$target" >"$owner_lock_out" 2>&1
+rc=$?
+set -e
+if [ "$rc" -ne 2 ]; then
+	cat "$owner_lock_out" >&2
+	die "LOCK-prefixed owner should be treated as owner (rc=2), got rc=$rc"
+fi
+assert_grep "LOCKED_BY_USER" "$owner_lock_out"
+rm -f "$target.lock~"
 
 ln -s "$tmp/symlink-target" "$target.lock~"
 symlink_out="$tmp/symlink-lock.out"
