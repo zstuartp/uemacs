@@ -99,25 +99,23 @@ startup_empty_rate=$(read_value startup_empty_ops_per_sec "$tmp" || true)
 startup_load_rate=$(read_value startup_load_ops_per_sec "$tmp" || true)
 type_rate=$(read_value type_ops_per_sec "$tmp" || true)
 key_rate=$(read_value key_ops_per_sec "$tmp" || true)
+main_rate=$(read_value main_ops_per_sec "$tmp" || true)
+dispatch_rate=$(read_value dispatch_ops_per_sec "$tmp" || true)
 startup_empty_norm=$(read_value startup_empty_norm_permille "$tmp" || true)
 startup_load_norm=$(read_value startup_load_norm_permille "$tmp" || true)
 type_norm=$(read_value type_norm_permille "$tmp" || true)
 key_norm=$(read_value key_norm_permille "$tmp" || true)
+main_norm=$(read_value main_norm_permille "$tmp" || true)
+dispatch_norm=$(read_value dispatch_norm_permille "$tmp" || true)
 
 mkdir -p "$(dirname "$PERF_HISTORY")"
 if [ ! -f "$PERF_HISTORY" ]; then
-	printf '%s%s\n' \
-		"timestamp,tag,commit,os,version_ops_per_sec,help_ops_per_sec," \
-		"version_seconds,help_seconds,ref_ops_per_sec," \
-		"version_norm_permille,help_norm_permille," \
-		"startup_empty_ops_per_sec,startup_load_ops_per_sec," \
-		"type_ops_per_sec,key_ops_per_sec," \
-		"startup_empty_norm_permille,startup_load_norm_permille," \
-		"type_norm_permille,key_norm_permille" \
-		>"$PERF_HISTORY"
+	cat >"$PERF_HISTORY" <<'EOF'
+timestamp,tag,commit,os,version_ops_per_sec,help_ops_per_sec,version_seconds,help_seconds,ref_ops_per_sec,version_norm_permille,help_norm_permille,startup_empty_ops_per_sec,startup_load_ops_per_sec,type_ops_per_sec,key_ops_per_sec,main_ops_per_sec,dispatch_ops_per_sec,startup_empty_norm_permille,startup_load_norm_permille,type_norm_permille,key_norm_permille,main_norm_permille,dispatch_norm_permille
+EOF
 fi
 
-printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
 	"$(csv_quote "$ts")" \
 	"$(csv_quote "$tag")" \
 	"$(csv_quote "$sha")" \
@@ -126,8 +124,9 @@ printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
 	"$version_seconds" "$help_seconds" "$ref_rate" \
 	"$version_norm" "$help_norm" \
 	"$startup_empty_rate" "$startup_load_rate" \
-	"$type_rate" "$key_rate" \
+	"$type_rate" "$key_rate" "$main_rate" "$dispatch_rate" \
 	"$startup_empty_norm" "$startup_load_norm" \
-	"$type_norm" "$key_norm" >>"$PERF_HISTORY"
+	"$type_norm" "$key_norm" "$main_norm" "$dispatch_norm" \
+	>>"$PERF_HISTORY"
 
 echo "perf-record: added entry to $PERF_HISTORY"
