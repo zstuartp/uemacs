@@ -20,6 +20,14 @@
 #define MAXLOCK 512
 #define MAXNAME 128
 
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#endif
+
 /**********************
  *
  * if successful, returns NULL  
@@ -29,34 +37,38 @@
  *********************/
 char *dolock(char *fname)
 {
-	int fd, n;
+	int fd;
 	static char lname[MAXLOCK], locker[MAXNAME + 1];
 	int mask;
 	struct stat sbuf;
+	ssize_t nread;
+	ssize_t nwritten;
+	size_t owner_len;
 
 	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
 	    >= (int)sizeof(lname))
 		return "LOCK ERROR: lock file path too long";
 
-	/* check that we are not being cheated, qname must point to     */
-	/* a regular file - even this code leaves a small window of     */
-	/* vulnerability but it is rather hard to exploit it            */
-
-	if (lstat(lname, &sbuf) == 0)
-		if (!S_ISREG(sbuf.st_mode))
-			return "LOCK ERROR: not a regular file";
-
+retry_create:
 	mask = umask(0);
-	fd = open(lname, O_RDWR | O_CREAT, 0666);
+	fd = open(lname,
+		  O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW,
+		  0666);
 	umask(mask);
-	if (fd < 0) {
-		if (errno == EACCES)
-			return NULL;
-		if (errno == EROFS)
-			return NULL;
-		return "LOCK ERROR: cannot access lock file";
-	}
-	if ((n = read(fd, locker, MAXNAME)) < 1) {
+
+	/* We created the lock file atomically and now own the lock. */
+	if (fd >= 0) {
+		if (fstat(fd, &sbuf) != 0) {
+			close(fd);
+			unlink(lname);
+			return "LOCK ERROR: cannot access lock file";
+		}
+		if (!S_ISREG(sbuf.st_mode)) {
+			close(fd);
+			unlink(lname);
+			return "LOCK ERROR: not a regular file";
+		}
+
 		/* Generate the owner tag (user@host) for the lock file */
 		const char *user = getlogin();
 		if (!user) {
@@ -87,14 +99,65 @@ char *dolock(char *fname)
 		}
 
 		/* Write the owner tag to the lock file */
-		lseek(fd, 0, SEEK_SET);
-		if (write(fd, locker, strlen(locker)) < 0)
-			perror("uemacs: ERROR: failed to write to lock file.");
-		close(fd);
+		owner_len = strlen(locker);
+		if (lseek(fd, 0, SEEK_SET) < 0) {
+			close(fd);
+			unlink(lname);
+			return "LOCK ERROR: cannot write lock file";
+		}
+		nwritten = write(fd, locker, owner_len);
+		if (nwritten < 0 || (size_t)nwritten != owner_len) {
+			close(fd);
+			unlink(lname);
+			return "LOCK ERROR: cannot write lock file";
+		}
+		if (close(fd) != 0) {
+			unlink(lname);
+			return "LOCK ERROR: cannot close lock file";
+		}
 		return NULL;
 	}
-	locker[n > MAXNAME ? MAXNAME : n] = 0;
-	return locker;
+
+	if (errno == EACCES || errno == EROFS)
+		return NULL;
+
+	/* A lock file exists: read and report its owner. */
+	if (errno == EEXIST) {
+		fd = open(lname, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+		if (fd < 0) {
+			if (errno == ENOENT)
+				goto retry_create;
+			if (errno == EACCES || errno == EROFS)
+				return NULL;
+			if (errno == ELOOP)
+				return "LOCK ERROR: not a regular file";
+			return "LOCK ERROR: cannot access lock file";
+		}
+
+		if (fstat(fd, &sbuf) != 0) {
+			close(fd);
+			return "LOCK ERROR: cannot access lock file";
+		}
+		if (!S_ISREG(sbuf.st_mode)) {
+			close(fd);
+			return "LOCK ERROR: not a regular file";
+		}
+
+		nread = read(fd, locker, MAXNAME);
+		if (close(fd) != 0 && nread >= 0)
+			return "LOCK ERROR: cannot access lock file";
+		if (nread < 0)
+			return "LOCK ERROR: cannot access lock file";
+		if (nread == 0)
+			return "LOCK ERROR: malformed lock file";
+
+		locker[nread > MAXNAME ? MAXNAME : nread] = '\0';
+		return locker;
+	}
+
+	if (errno == ELOOP)
+		return "LOCK ERROR: not a regular file";
+	return "LOCK ERROR: cannot access lock file";
 }
 
 /*********************
