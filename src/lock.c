@@ -101,7 +101,7 @@ int lock(char *fname)
 		return TRUE;
 
 	/* file failed...abort */
-	if (strncmp(locker, "LOCK", 4) == 0) {
+	if (is_lock_error(locker)) {
 		lckerror(locker);
 		return ABORT;
 	}

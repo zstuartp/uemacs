@@ -354,3 +354,4 @@ extern void lckerror(char *errstr);
 /* pklock.c */
 extern char *dolock(char *fname);
 extern char *undolock(char *fname);
+extern int is_lock_error(const char *msg);

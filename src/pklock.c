@@ -28,6 +28,25 @@
 #define O_NOFOLLOW 0
 #endif
 
+static char lock_err_path_too_long[] = "LOCK ERROR: lock file path too long";
+static char lock_err_not_regular[] = "LOCK ERROR: not a regular file";
+static char lock_err_cannot_access[] = "LOCK ERROR: cannot access lock file";
+static char lock_err_cannot_write[] = "LOCK ERROR: cannot write lock file";
+static char lock_err_cannot_close[] = "LOCK ERROR: cannot close lock file";
+static char lock_err_malformed[] = "LOCK ERROR: malformed lock file";
+static char lock_err_cannot_remove[] = "LOCK ERROR: cannot remove lock file";
+
+int is_lock_error(const char *msg)
+{
+	return msg == lock_err_path_too_long
+	    || msg == lock_err_not_regular
+	    || msg == lock_err_cannot_access
+	    || msg == lock_err_cannot_write
+	    || msg == lock_err_cannot_close
+	    || msg == lock_err_malformed
+	    || msg == lock_err_cannot_remove;
+}
+
 /**********************
  *
  * if successful, returns NULL  
@@ -47,7 +66,7 @@ char *dolock(char *fname)
 
 	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
 	    >= (int)sizeof(lname))
-		return "LOCK ERROR: lock file path too long";
+		return lock_err_path_too_long;
 
 retry_create:
 	mask = umask(0);
@@ -61,12 +80,12 @@ retry_create:
 		if (fstat(fd, &sbuf) != 0) {
 			close(fd);
 			unlink(lname);
-			return "LOCK ERROR: cannot access lock file";
+			return lock_err_cannot_access;
 		}
 		if (!S_ISREG(sbuf.st_mode)) {
 			close(fd);
 			unlink(lname);
-			return "LOCK ERROR: not a regular file";
+			return lock_err_not_regular;
 		}
 
 		/* Generate the owner tag (user@host) for the lock file */
@@ -103,17 +122,17 @@ retry_create:
 		if (lseek(fd, 0, SEEK_SET) < 0) {
 			close(fd);
 			unlink(lname);
-			return "LOCK ERROR: cannot write lock file";
+			return lock_err_cannot_write;
 		}
 		nwritten = write(fd, locker, owner_len);
 		if (nwritten < 0 || (size_t)nwritten != owner_len) {
 			close(fd);
 			unlink(lname);
-			return "LOCK ERROR: cannot write lock file";
+			return lock_err_cannot_write;
 		}
 		if (close(fd) != 0) {
 			unlink(lname);
-			return "LOCK ERROR: cannot close lock file";
+			return lock_err_cannot_close;
 		}
 		return NULL;
 	}
@@ -130,34 +149,34 @@ retry_create:
 			if (errno == EACCES || errno == EROFS)
 				return NULL;
 			if (errno == ELOOP)
-				return "LOCK ERROR: not a regular file";
-			return "LOCK ERROR: cannot access lock file";
+				return lock_err_not_regular;
+			return lock_err_cannot_access;
 		}
 
 		if (fstat(fd, &sbuf) != 0) {
 			close(fd);
-			return "LOCK ERROR: cannot access lock file";
+			return lock_err_cannot_access;
 		}
 		if (!S_ISREG(sbuf.st_mode)) {
 			close(fd);
-			return "LOCK ERROR: not a regular file";
+			return lock_err_not_regular;
 		}
 
 		nread = read(fd, locker, MAXNAME);
 		if (close(fd) != 0 && nread >= 0)
-			return "LOCK ERROR: cannot access lock file";
+			return lock_err_cannot_access;
 		if (nread < 0)
-			return "LOCK ERROR: cannot access lock file";
+			return lock_err_cannot_access;
 		if (nread == 0)
-			return "LOCK ERROR: malformed lock file";
+			return lock_err_malformed;
 
 		locker[nread > MAXNAME ? MAXNAME : nread] = '\0';
 		return locker;
 	}
 
 	if (errno == ELOOP)
-		return "LOCK ERROR: not a regular file";
-	return "LOCK ERROR: cannot access lock file";
+		return lock_err_not_regular;
+	return lock_err_cannot_access;
 }
 
 /*********************
@@ -175,13 +194,13 @@ char *undolock(char *fname)
 
 	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
 	    >= (int)sizeof(lname))
-		return "LOCK ERROR: lock file path too long";
+		return lock_err_path_too_long;
 	if (unlink(lname) != 0) {
 		if (errno == EACCES || errno == ENOENT)
 			return NULL;
 		if (errno == EROFS)
 			return NULL;
-		return "LOCK ERROR: cannot remove lock file";
+		return lock_err_cannot_remove;
 	}
 	return NULL;
 }
