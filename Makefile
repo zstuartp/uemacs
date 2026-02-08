@@ -39,9 +39,9 @@ PERF_COMPARE ?= $(TEST_DIR)/perf-compare.sh
 PERF_RECORD ?= $(TEST_DIR)/perf-record.sh
 PERF_SELFCHECK ?= $(TEST_DIR)/perf-selfcheck.sh
 PERF_AB ?= $(TEST_DIR)/perf-ab.sh
-PERF_BASELINE ?= $(TEST_DIR)/perf-baseline.txt
+PERF_BASELINE ?= $(BUILD_DIR)/perf-baseline.txt
 PERF_CURRENT ?= $(BUILD_DIR)/perf-current.txt
-PERF_HISTORY ?= $(TEST_DIR)/perf-history.csv
+PERF_HISTORY ?= $(BUILD_DIR)/perf-history.csv
 MAKE_CMD_FOR_TEST := $(MAKE)
 
 # ---------- Pretty output / verbosity ----------
@@ -108,7 +108,7 @@ endif
 
 # ---------- Targets ----------
 .PHONY: all clean install install-user uninstall uninstall-user run
-.PHONY: test test-perf perf-mini perf-baseline perf-compare perf-record
+.PHONY: test test-perf perf perf-mini perf-baseline perf-compare perf-record
 .PHONY: perf-selfcheck perf-ab
 .PHONY: print-vars
 all: $(TARGET)
@@ -233,7 +233,7 @@ test-perf: $(TARGET)
 		PERF_OUT="$(PERF_CURRENT)" sh "$(PERF_SCRIPT)"
 	$(Q)cat "$(PERF_CURRENT)"
 
-perf-mini: $(TARGET)
+perf: $(TARGET)
 	$(call log,PERF,$(PERF_SCRIPT))
 	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
 		PERF_OUT="$(PERF_CURRENT)" PERF_INCLUDE_CLI=0 \
@@ -243,6 +243,8 @@ perf-mini: $(TARGET)
 		MAIN_COMMANDS=200 DISPATCH_COMMANDS=120 \
 		sh "$(PERF_SCRIPT)"
 	$(Q)cat "$(PERF_CURRENT)"
+
+perf-mini: perf
 
 perf-baseline: $(TARGET)
 	$(call log,PERF,$(PERF_BASELINE))
@@ -266,8 +268,11 @@ perf-selfcheck: $(TARGET)
 		PERF_BASELINE="$(PERF_BASELINE)" sh "$(PERF_SELFCHECK)"
 
 perf-ab: $(TARGET)
-	$(call log,PERF,$(PERF_AB))
-	$(Q)ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
+	$(Q)set -eu; \
+	echo "perf-ab is experimental and disabled by default."; \
+	echo "Use PERF_AB_ENABLE=1 to run it explicitly."; \
+	if [ "$${PERF_AB_ENABLE:-0}" != "1" ]; then exit 0; fi; \
+	ROOT="$(CURDIR)" APP="$(APP)" TARGET="$(CURDIR)/$(TARGET)" \
 		sh "$(PERF_AB)"
 
 print-vars:
