@@ -57,6 +57,7 @@ source_c="$TEST_DIR/pklock_harness.c"
 pklock_c="$ROOT/src/pklock.c"
 
 if ! "$cc_cmd" -std=c99 -Wall -Wextra -Werror -pedantic \
+	-I"$ROOT/include" -D_POSIX_C_SOURCE=200809L \
 	-I"$ROOT/src" "$source_c" "$pklock_c" -o "$harness"; then
 	die "failed to build pklock harness"
 fi
