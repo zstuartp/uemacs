@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-char *dolock(char *fname);
-char *undolock(char *fname);
+const char *dolock(char *fname);
+const char *undolock(char *fname);
 int is_lock_error(const char *msg);
 
 static int lock_status(const char *msg)
@@ -14,7 +14,7 @@ static int lock_status(const char *msg)
 
 int main(int argc, char **argv)
 {
-	char *msg;
+	const char *msg;
 
 	if (argc != 3) {
 		fprintf(stderr, "usage: %s <lock|unlock> <path>\n", argv[0]);
