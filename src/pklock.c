@@ -28,23 +28,84 @@
 #define O_NOFOLLOW 0
 #endif
 
-static char lock_err_path_too_long[] = "LOCK ERROR: lock file path too long";
-static char lock_err_not_regular[] = "LOCK ERROR: not a regular file";
-static char lock_err_cannot_access[] = "LOCK ERROR: cannot access lock file";
-static char lock_err_cannot_write[] = "LOCK ERROR: cannot write lock file";
-static char lock_err_cannot_close[] = "LOCK ERROR: cannot close lock file";
-static char lock_err_malformed[] = "LOCK ERROR: malformed lock file";
-static char lock_err_cannot_remove[] = "LOCK ERROR: cannot remove lock file";
+static const char LOCK_ERR_PATH_TOO_LONG[] =
+	"LOCK ERROR: lock file path too long";
+static const char LOCK_ERR_NOT_REGULAR[] =
+	"LOCK ERROR: not a regular file";
+static const char LOCK_ERR_CANNOT_ACCESS[] =
+	"LOCK ERROR: cannot access lock file";
+static const char LOCK_ERR_CANNOT_WRITE[] =
+	"LOCK ERROR: cannot write lock file";
+static const char LOCK_ERR_CANNOT_CLOSE[] =
+	"LOCK ERROR: cannot close lock file";
+static const char LOCK_ERR_MALFORMED[] =
+	"LOCK ERROR: malformed lock file";
+static const char LOCK_ERR_CANNOT_REMOVE[] =
+	"LOCK ERROR: cannot remove lock file";
+
+static int lock_err_equal(const char *msg, const char *err)
+{
+	return msg == err || (msg != NULL && strcmp(msg, err) == 0);
+}
+
+static int open_existing_lock(const char *lname, struct stat *sbuf)
+{
+	int fd;
+	int saved_errno;
+
+#if O_NOFOLLOW == 0
+	struct stat lbuf;
+
+	if (lstat(lname, &lbuf) != 0)
+		return -1;
+	if (!S_ISREG(lbuf.st_mode)) {
+		errno = ELOOP;
+		return -1;
+	}
+#endif
+
+	fd = open(lname, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+	if (fd < 0)
+		return -1;
+
+	if (fstat(fd, sbuf) != 0) {
+		saved_errno = errno;
+		close(fd);
+		errno = saved_errno;
+		return -1;
+	}
+	if (!S_ISREG(sbuf->st_mode)) {
+		close(fd);
+		errno = ELOOP;
+		return -1;
+	}
+
+#if O_NOFOLLOW == 0
+	if (lstat(lname, &lbuf) != 0) {
+		saved_errno = errno;
+		close(fd);
+		errno = saved_errno;
+		return -1;
+	}
+	if (lbuf.st_dev != sbuf->st_dev || lbuf.st_ino != sbuf->st_ino) {
+		close(fd);
+		errno = ENOENT;
+		return -1;
+	}
+#endif
+
+	return fd;
+}
 
 int is_lock_error(const char *msg)
 {
-	return msg == lock_err_path_too_long
-	    || msg == lock_err_not_regular
-	    || msg == lock_err_cannot_access
-	    || msg == lock_err_cannot_write
-	    || msg == lock_err_cannot_close
-	    || msg == lock_err_malformed
-	    || msg == lock_err_cannot_remove;
+	return lock_err_equal(msg, LOCK_ERR_PATH_TOO_LONG)
+	    || lock_err_equal(msg, LOCK_ERR_NOT_REGULAR)
+	    || lock_err_equal(msg, LOCK_ERR_CANNOT_ACCESS)
+	    || lock_err_equal(msg, LOCK_ERR_CANNOT_WRITE)
+	    || lock_err_equal(msg, LOCK_ERR_CANNOT_CLOSE)
+	    || lock_err_equal(msg, LOCK_ERR_MALFORMED)
+	    || lock_err_equal(msg, LOCK_ERR_CANNOT_REMOVE);
 }
 
 /**********************
@@ -54,7 +115,7 @@ int is_lock_error(const char *msg)
  * if other error, returns "LOCK ERROR: explanation"
  *
  *********************/
-char *dolock(char *fname)
+const char *dolock(char *fname)
 {
 	int fd;
 	static char lname[MAXLOCK], locker[MAXNAME + 1];
@@ -65,8 +126,10 @@ char *dolock(char *fname)
 	size_t owner_len;
 
 	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
-	    >= (int)sizeof(lname))
-		return lock_err_path_too_long;
+	    >= (int)sizeof(lname)) {
+		errno = ENAMETOOLONG;
+		return LOCK_ERR_PATH_TOO_LONG;
+	}
 
 retry_create:
 	mask = umask(0);
@@ -80,12 +143,13 @@ retry_create:
 		if (fstat(fd, &sbuf) != 0) {
 			close(fd);
 			unlink(lname);
-			return lock_err_cannot_access;
+			return LOCK_ERR_CANNOT_ACCESS;
 		}
 		if (!S_ISREG(sbuf.st_mode)) {
 			close(fd);
 			unlink(lname);
-			return lock_err_not_regular;
+			errno = ELOOP;
+			return LOCK_ERR_NOT_REGULAR;
 		}
 
 		/* Generate the owner tag (user@host) for the lock file */
@@ -122,17 +186,17 @@ retry_create:
 		if (lseek(fd, 0, SEEK_SET) < 0) {
 			close(fd);
 			unlink(lname);
-			return lock_err_cannot_write;
+			return LOCK_ERR_CANNOT_WRITE;
 		}
 		nwritten = write(fd, locker, owner_len);
 		if (nwritten < 0 || (size_t)nwritten != owner_len) {
 			close(fd);
 			unlink(lname);
-			return lock_err_cannot_write;
+			return LOCK_ERR_CANNOT_WRITE;
 		}
 		if (close(fd) != 0) {
 			unlink(lname);
-			return lock_err_cannot_close;
+			return LOCK_ERR_CANNOT_CLOSE;
 		}
 		return NULL;
 	}
@@ -142,41 +206,34 @@ retry_create:
 
 	/* A lock file exists: read and report its owner. */
 	if (errno == EEXIST) {
-		fd = open(lname, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+		fd = open_existing_lock(lname, &sbuf);
 		if (fd < 0) {
 			if (errno == ENOENT)
 				goto retry_create;
 			if (errno == EACCES || errno == EROFS)
 				return NULL;
 			if (errno == ELOOP)
-				return lock_err_not_regular;
-			return lock_err_cannot_access;
-		}
-
-		if (fstat(fd, &sbuf) != 0) {
-			close(fd);
-			return lock_err_cannot_access;
-		}
-		if (!S_ISREG(sbuf.st_mode)) {
-			close(fd);
-			return lock_err_not_regular;
+				return LOCK_ERR_NOT_REGULAR;
+			return LOCK_ERR_CANNOT_ACCESS;
 		}
 
 		nread = read(fd, locker, MAXNAME);
 		if (close(fd) != 0 && nread >= 0)
-			return lock_err_cannot_access;
+			return LOCK_ERR_CANNOT_ACCESS;
 		if (nread < 0)
-			return lock_err_cannot_access;
-		if (nread == 0)
-			return lock_err_malformed;
+			return LOCK_ERR_CANNOT_ACCESS;
+		if (nread == 0) {
+			errno = EINVAL;
+			return LOCK_ERR_MALFORMED;
+		}
 
 		locker[nread > MAXNAME ? MAXNAME : nread] = '\0';
 		return locker;
 	}
 
 	if (errno == ELOOP)
-		return lock_err_not_regular;
-	return lock_err_cannot_access;
+		return LOCK_ERR_NOT_REGULAR;
+	return LOCK_ERR_CANNOT_ACCESS;
 }
 
 /*********************
@@ -188,19 +245,21 @@ retry_create:
  *
  *********************/
 
-char *undolock(char *fname)
+const char *undolock(char *fname)
 {
 	static char lname[MAXLOCK];
 
 	if (snprintf(lname, sizeof(lname), "%s.lock~", fname)
-	    >= (int)sizeof(lname))
-		return lock_err_path_too_long;
+	    >= (int)sizeof(lname)) {
+		errno = ENAMETOOLONG;
+		return LOCK_ERR_PATH_TOO_LONG;
+	}
 	if (unlink(lname) != 0) {
 		if (errno == EACCES || errno == ENOENT)
 			return NULL;
 		if (errno == EROFS)
 			return NULL;
-		return lock_err_cannot_remove;
+		return LOCK_ERR_CANNOT_REMOVE;
 	}
 	return NULL;
 }

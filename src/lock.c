@@ -91,7 +91,7 @@ int lockrel(void)
  */
 int lock(char *fname)
 {
-	char *locker;				/* lock error message */
+	const char *locker;			/* lock error message */
 	int status;				/* return status */
 	char msg[NSTRING];			/* message string */
 
@@ -124,7 +124,7 @@ int lock(char *fname)
  */
 int unlock(char *fname)
 {
-	char *locker;				/* undolock return string */
+	const char *locker;			/* undolock return string */
 
 	/* unclock and return */
 	locker = undolock(fname);
@@ -141,7 +141,7 @@ int unlock(char *fname)
  *
  * char *errstr;	lock error string to print out
  */
-void lckerror(char *errstr)
+void lckerror(const char *errstr)
 {
 	char obuf[NSTRING];			/* output buffer for error message */
 
