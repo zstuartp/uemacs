@@ -3,32 +3,63 @@ name: C/C++ CI
 on:
   push:
     branches: [ "master", "testing" ]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 permissions:
   contents: read
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  CCACHE_DIR: ~/.ccache
+  CCACHE_COMPRESS: "1"
+  CCACHE_MAXSIZE: "200M"
 
 jobs:
   build-linux:
     name: Linux
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libhunspell-dev libncurses-dev pkg-config
-      - name: Build
+          sudo apt-get install -y --no-install-recommends \
+            libhunspell-dev libncurses-dev pkg-config ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('Makefile', 'src/**/*.c', 'src/**/*.h', 'include/**/*.h') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      - name: Build + Test
         run: |
           set -eux
-          make
-      - name: Test
-        run: |
-          set -eux
-          make test
+          export CC="ccache ${CC:-cc}"
+          JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc || echo 2)"
+          make -j"$JOBS" test
+
       - name: Perf Snapshot (Linux)
+        if: ${{ github.event_name == 'push' }}
         run: |
           set -eux
+          export CC="ccache ${CC:-cc}"
+          JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc || echo 2)"
           VERSION_ITERS=100 \
           HELP_ITERS=60 \
           REF_ITERS=120 \
@@ -42,8 +73,10 @@ jobs:
           BENCH_FILE_LINES=512 \
           TYPE_COMMANDS=64 \
           KEY_COMMANDS=64 \
-          make test-perf
+          make -j"$JOBS" test-perf
+
       - name: Perf Summary (Linux)
+        if: ${{ github.event_name == 'push' }}
         run: |
           set -eu
           {
@@ -53,39 +86,52 @@ jobs:
             cat build/perf-current.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload Perf Artifact (Linux)
+        if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: perf-linux-${{ github.run_id }}
           path: build/perf-current.txt
+          retention-days: 14
 
   build-macos:
     name: macOS
     runs-on: macos-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+
       - name: Install dependencies
         run: |
-          brew update
-          brew install hunspell ncurses pkg-config
+          brew install hunspell ncurses pkg-config ccache
           echo "PKG_CONFIG_PATH=$(brew --prefix ncurses)/lib/pkgconfig:$(brew --prefix hunspell)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
           echo "CPPFLAGS=-I$(brew --prefix ncurses)/include -I$(brew --prefix hunspell)/include $CPPFLAGS" >> "$GITHUB_ENV"
           echo "LDFLAGS=-L$(brew --prefix ncurses)/lib -L$(brew --prefix hunspell)/lib $LDFLAGS" >> "$GITHUB_ENV"
-      - name: Build
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('Makefile', 'src/**/*.c', 'src/**/*.h', 'include/**/*.h') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      - name: Build + Test
         run: |
           set -eux
-          make
-      - name: Test
-        run: |
-          set -eux
-          make test
+          export CC="ccache ${CC:-cc}"
+          JOBS="$(sysctl -n hw.ncpu || echo 2)"
+          make -j"$JOBS" test
 
   build-freebsd:
     name: FreeBSD (VM)
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build in FreeBSD VM
+      - name: Build + Test in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
@@ -96,12 +142,13 @@ jobs:
             pkg install -y gmake pkgconf hunspell ncurses
           run: |
             set -eux
-            gmake
             gmake test
 
   build-windows-cygwin:
     name: Windows (Cygwin POSIX)
+    if: ${{ github.event_name == 'push' }}
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - run: git config --global core.autocrlf input
       - uses: actions/checkout@v4
@@ -118,12 +165,7 @@ jobs:
             libhunspell-devel
             libncurses-devel
 
-      - name: Build
-        shell: pwsh
-        run: |
-          $bash = "${{ steps.cygwin.outputs.root }}\bin\bash.exe"
-          & $bash -lc 'set -eux; cd "$(cygpath -u "$GITHUB_WORKSPACE")"; make'
-      - name: Test
+      - name: Build + Test
         shell: pwsh
         run: |
           $bash = "${{ steps.cygwin.outputs.root }}\bin\bash.exe"
