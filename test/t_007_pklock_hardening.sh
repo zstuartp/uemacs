@@ -47,6 +47,11 @@ else
 fi
 
 tmp=$(mkdtemp_compat) || die "failed to create temp directory"
+case "$tmp" in
+  ""|"/"|".") die "refusing to rm -rf unsafe tmp='$tmp'" ;;
+  /tmp/*|"${TMPDIR:-/tmp}"/*) : ;;  # expected
+  *) die "unexpected tmp path: $tmp" ;;
+esac
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 cc_cmd=${CC:-cc}
