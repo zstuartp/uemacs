@@ -50,7 +50,10 @@ tmp=$(mkdtemp_compat) || die "failed to create temp directory"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 cc_cmd=${CC:-cc}
-require_cmd "$cc_cmd"
+# CC can contain a compiler wrapper and/or flags (e.g. "ccache cc").
+# Split it into words for command lookup and execution.
+set -- $cc_cmd
+require_cmd "$1"
 
 harness="$tmp/pklock-harness"
 source_c="$TEST_DIR/pklock_harness.c"
