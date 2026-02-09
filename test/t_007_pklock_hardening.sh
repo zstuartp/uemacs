@@ -54,20 +54,18 @@ case "$tmp" in
 esac
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
-cc_cmd=${CC:-cc}
-# CC can contain a compiler wrapper and/or flags (e.g. "ccache cc").
-# Split it into words for command lookup and execution.
-set -- $cc_cmd
-require_cmd "$1"
-
 harness="$tmp/pklock-harness"
 source_c="$TEST_DIR/pklock_harness.c"
 pklock_c="$ROOT/src/pklock.c"
 
-if ! "$cc_cmd" -std=c99 -Wall -Wextra -Werror -pedantic \
+cc_cmd=${CC:-cc}
+set -- $cc_cmd
+require_cmd "$1"
+
+if ! "$@" -std=c99 -Wall -Wextra -Werror -pedantic \
 	-I"$ROOT/include" -D_POSIX_C_SOURCE=200809L \
 	-I"$ROOT/src" "$source_c" "$pklock_c" -o "$harness"; then
-	die "failed to build pklock harness"
+	die "failed to build pklock harness" 
 fi
 
 target="$tmp/target.txt"
