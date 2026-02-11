@@ -54,47 +54,6 @@ jobs:
           JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc || echo 2)"
           make -j"$JOBS" test
 
-      - name: Perf Snapshot (Linux)
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          set -eux
-          export CC="ccache ${CC:-cc}"
-          JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc || echo 2)"
-          VERSION_ITERS=100 \
-          HELP_ITERS=60 \
-          REF_ITERS=120 \
-          STARTUP_EMPTY_ITERS=4 \
-          STARTUP_LOAD_ITERS=3 \
-          TYPE_ITERS=3 \
-          KEY_ITERS=3 \
-          PERF_TRIALS=1 \
-          PERF_MIN_SECONDS=1 \
-          PERF_MAX_ITERS=1024 \
-          BENCH_FILE_LINES=512 \
-          TYPE_COMMANDS=64 \
-          KEY_COMMANDS=64 \
-          make -j"$JOBS" test-perf
-
-      - name: Perf Summary (Linux)
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          set -eu
-          {
-            echo "### Linux Perf Snapshot"
-            echo
-            echo '```'
-            cat build/perf-current.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload Perf Artifact (Linux)
-        if: ${{ github.event_name == 'push' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: perf-linux-${{ github.run_id }}
-          path: build/perf-current.txt
-          retention-days: 14
-
   build-macos:
     name: macOS
     runs-on: macos-latest

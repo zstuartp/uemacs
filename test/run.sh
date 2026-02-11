@@ -1,37 +1,33 @@
 #!/bin/sh
+# test/run.sh — minimal test runner for uemacs
+# Discovers and runs test/t_*.sh scripts.
 
 set -eu
 
-ROOT=${ROOT:-$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)}
-TEST_DIR=${TEST_DIR:-"$ROOT/test"}
-APP=${APP:-em}
-TARGET=${TARGET:-"$ROOT/build/bin/$APP"}
+: "${ROOT:?ROOT must be set}"
+: "${TARGET:?TARGET must be set}"
+: "${TEST_DIR:?TEST_DIR must be set}"
+: "${APP:?APP must be set}"
 
-count=0
-pass=0
-fail=0
+export ROOT TARGET TEST_DIR APP
 
-for test_file in "$TEST_DIR"/t_*.sh; do
-	[ -f "$test_file" ] || continue
+total_pass=0
+total_fail=0
+ran=0
 
-	count=$((count + 1))
-	name=$(basename "$test_file")
-	printf '==> %s\n' "$name"
-
-	if ROOT="$ROOT" TEST_DIR="$TEST_DIR" APP="$APP" TARGET="$TARGET" \
-		MAKE_CMD="${MAKE_CMD:-make}" sh "$test_file"; then
-		pass=$((pass + 1))
-		printf 'ok  - %s\n' "$name"
+for t in "$TEST_DIR"/t_*.sh; do
+	[ -f "$t" ] || continue
+	name="$(basename "$t")"
+	printf '%s\n' "--- $name ---"
+	if sh "$t"; then
+		total_pass=$((total_pass + 1))
 	else
-		fail=$((fail + 1))
-		printf 'not ok - %s\n' "$name"
+		total_fail=$((total_fail + 1))
 	fi
+	ran=$((ran + 1))
 done
 
-if [ "$count" -eq 0 ]; then
-	echo "No tests found in $TEST_DIR"
-	exit 1
-fi
+printf "\n=== %d test scripts: %d passed, %d failed ===\n" \
+	"$ran" "$total_pass" "$total_fail"
 
-printf 'Tests: %s, Passed: %s, Failed: %s\n' "$count" "$pass" "$fail"
-[ "$fail" -eq 0 ]
+[ "$total_fail" -eq 0 ]
